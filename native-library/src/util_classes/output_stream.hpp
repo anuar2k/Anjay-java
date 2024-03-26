@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ class OutputStream {
             std::vector<jni::jbyte> data_vec((const uint8_t *) buffer,
                                              (const uint8_t *) buffer
                                                      + *inout_size);
-            utils::AccessorBase<OutputStream>{ *env, *output_stream }
+            utils::AccessorBase<OutputStream>{ *output_stream }
                     .get_method<void(jni::Array<jni::jbyte>)>("write")(
                             jni::Make<jni::Array<jni::jbyte>>(*env, data_vec));
             return 0;

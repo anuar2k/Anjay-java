@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@ namespace utils {
 struct Etag {
     anjay_etag_t *data;
 
-    Etag(JNIEnv &env, const std::vector<jni::jbyte> &etag) {
+    Etag(const std::vector<jni::jbyte> &etag) {
         uint8_t size = static_cast<uint8_t>(etag.size());
         if (size != etag.size()) {
-            avs_throw(IllegalArgumentException(env, "etag too long"));
+            avs_throw(IllegalArgumentException("etag too long"));
         }
         data = anjay_etag_new(size);
         if (!data) {

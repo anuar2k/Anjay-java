@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,13 +32,7 @@ struct DownloadResult {
     }
 
     static jni::Local<jni::Object<DownloadResult>>
-    into_java(jni::JNIEnv &env, anjay_download_result_t result) {
-        auto clazz = jni::Class<DownloadResult>::Find(env);
-        auto get_enum_instance = [&](const std::string &name) {
-            return clazz.Get(env,
-                             clazz.GetStaticField<jni::Object<DownloadResult>>(
-                                     env, name.c_str()));
-        };
+    into_java(anjay_download_result_t result) {
         static std::unordered_map<anjay_download_result_t, std::string> MAPPING{
             { ANJAY_DOWNLOAD_FINISHED, "FINISHED" },
             { ANJAY_DOWNLOAD_ERR_FAILED, "FAILED" },
@@ -46,7 +40,16 @@ struct DownloadResult {
             { ANJAY_DOWNLOAD_ERR_EXPIRED, "EXPIRED" },
             { ANJAY_DOWNLOAD_ERR_ABORTED, "ABORTED" }
         };
-        return get_enum_instance(MAPPING[result]);
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<DownloadResult>::Find(*env);
+            auto get_enum_instance = [&](const std::string &name) {
+                return clazz.Get(*env,
+                                 clazz.template GetStaticField<
+                                         jni::Object<DownloadResult>>(
+                                         *env, name.c_str()));
+            };
+            return get_enum_instance(MAPPING[result]);
+        });
     }
 };
 

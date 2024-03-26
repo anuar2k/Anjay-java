@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,9 +39,8 @@ class NativeServerObject {
 
         class Accessor : public utils::AccessorBase<Instance> {
         public:
-            explicit Accessor(jni::JNIEnv &env,
-                              const jni::Object<Instance> &instance)
-                    : AccessorBase(env, instance) {}
+            explicit Accessor(const jni::Object<Instance> &instance)
+                    : AccessorBase(instance) {}
 
             anjay_ssid_t get_ssid() {
                 return get_value<uint16_t>("ssid");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,33 +19,33 @@
 #include "./util_classes/exception.hpp"
 
 NativeSecurityObject::NativeSecurityObject(
-        jni::JNIEnv &env, const jni::Object<NativeAnjay> &instance)
+        jni::JNIEnv &, const jni::Object<NativeAnjay> &instance)
         : anjay_() {
-    auto native_anjay = NativeAnjay::into_native(env, instance);
+    auto native_anjay = NativeAnjay::into_native(instance);
     anjay_ = native_anjay->get_anjay();
     if (auto locked = anjay_.lock()) {
         int result = anjay_security_object_install(locked.get());
         if (result) {
-            avs_throw(AnjayException(env, result,
+            avs_throw(AnjayException(result,
                                      "Could not install security object"));
         }
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
-void NativeSecurityObject::purge(jni::JNIEnv &env) {
+void NativeSecurityObject::purge(jni::JNIEnv &) {
     if (auto locked = anjay_.lock()) {
         anjay_security_object_purge(locked.get());
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
-jni::jint NativeSecurityObject::add_instance(jni::JNIEnv &env,
+jni::jint NativeSecurityObject::add_instance(jni::JNIEnv &,
                                              jni::Object<Instance> &instance,
                                              jni::jint preferred_iid) {
-    auto accessor = Instance::Accessor{ env, instance };
+    auto accessor = Instance::Accessor{ instance };
     anjay_security_instance_t sec{};
     sec.ssid = accessor.get_ssid();
     auto uri = accessor.get_server_uri();
@@ -96,7 +96,7 @@ jni::jint NativeSecurityObject::add_instance(jni::JNIEnv &env,
 
     if (preferred_iid < 0 || preferred_iid > ANJAY_ID_INVALID) {
         avs_throw(IllegalArgumentException(
-                env, "preferred iid out of anjay_iid_t range"));
+                "preferred iid out of anjay_iid_t range"));
     }
     anjay_iid_t iid = static_cast<anjay_iid_t>(preferred_iid);
     if (auto locked = anjay_.lock()) {
@@ -104,21 +104,21 @@ jni::jint NativeSecurityObject::add_instance(jni::JNIEnv &env,
             return -1;
         }
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
     return iid;
 }
 
-jni::jboolean NativeSecurityObject::is_modified(jni::JNIEnv &env) {
+jni::jboolean NativeSecurityObject::is_modified(jni::JNIEnv &) {
     if (auto locked = anjay_.lock()) {
         return anjay_security_object_is_modified(locked.get());
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 jni::jint
-NativeSecurityObject::persist(jni::JNIEnv &env,
+NativeSecurityObject::persist(jni::JNIEnv &,
                               jni::Object<utils::OutputStream> &output_stream) {
     if (auto locked = anjay_.lock()) {
         auto stream = utils::OutputStream::get_avs_stream(&output_stream);
@@ -130,12 +130,12 @@ NativeSecurityObject::persist(jni::JNIEnv &env,
         }
         return 0;
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 jni::jint
-NativeSecurityObject::restore(jni::JNIEnv &env,
+NativeSecurityObject::restore(jni::JNIEnv &,
                               jni::Object<utils::InputStream> &input_stream) {
     if (auto locked = anjay_.lock()) {
         auto stream = utils::InputStream::get_avs_stream(&input_stream);
@@ -147,7 +147,7 @@ NativeSecurityObject::restore(jni::JNIEnv &env,
         }
         return 0;
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 

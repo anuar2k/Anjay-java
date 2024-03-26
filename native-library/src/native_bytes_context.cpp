@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,8 @@
 #include "./native_bytes_context.hpp"
 
 NativeBytesContext::NativeBytesContext(
-        jni::JNIEnv &env,
-        jni::Object<utils::NativeBytesContextPointer> &context)
-        : ctx_(utils::NativeBytesContextPointer::into_native(env, context)) {}
+        jni::JNIEnv &, jni::Object<utils::NativeBytesContextPointer> &context)
+        : ctx_(utils::NativeBytesContextPointer::into_native(context)) {}
 
 jni::jint NativeBytesContext::append(jni::JNIEnv &env,
                                      const jni::Array<jni::jbyte> &chunk,

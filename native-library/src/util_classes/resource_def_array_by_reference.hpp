@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,17 +38,17 @@ struct ResourceDefArrayByReference {
 
     template <typename Func>
     static void
-    for_each(jni::JNIEnv &env,
-             const jni::Object<ResourceDefArrayByReference> &instance,
+    for_each(const jni::Object<ResourceDefArrayByReference> &instance,
              Func &&func) {
-        auto accessor =
-                AccessorBase<ResourceDefArrayByReference>{ env, instance };
+        auto accessor = AccessorBase<ResourceDefArrayByReference>{ instance };
         auto value =
                 accessor.get_value<jni::Array<jni::Object<utils::ResourceDef>>>(
                         "value");
-        for (jni::jsize i = 0; i < value.Length(env); ++i) {
-            func(ResourceDef::into_native(env, value.Get(env, i)));
-        }
+        GlobalContext::call_with_env([&](auto &&env) {
+            for (jni::jsize i = 0; i < value.Length(*env); ++i) {
+                func(ResourceDef::into_native(value.Get(*env, i)));
+            }
+        });
     }
 };
 

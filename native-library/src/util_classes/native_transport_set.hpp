@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,8 @@ struct NativeTransportSet {
 
     class Accessor : public AccessorBase<NativeTransportSet> {
     public:
-        explicit Accessor(jni::JNIEnv &env,
-                          const jni::Object<NativeTransportSet> &instance)
-                : AccessorBase(env, instance) {}
+        explicit Accessor(const jni::Object<NativeTransportSet> &instance)
+                : AccessorBase(instance) {}
 
         bool get_udp() {
             return get_value<bool>("udp");
@@ -45,10 +44,9 @@ struct NativeTransportSet {
     };
 
     static anjay_transport_set_t
-    into_transport_set(jni::JNIEnv &env,
-                       jni::Object<NativeTransportSet> &instance) {
+    into_transport_set(jni::Object<NativeTransportSet> &instance) {
         anjay_transport_set_t transports{};
-        auto accessor = Accessor{ env, instance };
+        auto accessor = Accessor{ instance };
         transports.udp = accessor.get_udp();
         transports.tcp = accessor.get_tcp();
         return transports;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,8 @@ struct DownloadConfiguration {
     class Accessor : public AccessorBase<DownloadConfiguration> {
     public:
         explicit Accessor(
-                jni::JNIEnv &env,
                 const jni::Object<utils::DownloadConfiguration> &config)
-                : AccessorBase(env, config) {}
+                : AccessorBase(config) {}
 
         std::optional<std::string> get_url() {
             return get_nullable_value<std::string>("url");
@@ -48,7 +47,7 @@ struct DownloadConfiguration {
         std::optional<Etag> get_etag() {
             auto value = get_optional_array<jni::jbyte>("etag");
             if (value) {
-                return std::make_optional<Etag>(env_, *value);
+                return std::make_optional<Etag>(*value);
             } else {
                 return {};
             }
@@ -57,8 +56,7 @@ struct DownloadConfiguration {
         std::optional<avs_coap_udp_tx_params_t> get_coap_tx_params() {
             auto value = get_optional_value<CoapUdpTxParams>("coapTxParams");
             if (value) {
-                return std::make_optional(
-                        CoapUdpTxParams::into_native(get_env(), *value));
+                return std::make_optional(CoapUdpTxParams::into_native(*value));
             }
             return {};
         }

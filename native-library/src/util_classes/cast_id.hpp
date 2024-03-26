@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 namespace utils {
 
 template <typename T>
-T cast_id(JNIEnv &env, jni::jint id) {
+T cast_id(jni::jint id) {
     T result = static_cast<T>(id);
     if (result != id) {
-        avs_throw(IllegalArgumentException(env, "id out of range"));
+        avs_throw(IllegalArgumentException("id out of range"));
     }
     return result;
 }

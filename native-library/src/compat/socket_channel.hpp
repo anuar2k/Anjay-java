@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,18 +54,16 @@ struct UdpChannelTag {
 
 template <typename ChannelTag>
 class SocketChannel {
-    jni::JNIEnv &env_;
     jni::Global<jni::Object<ChannelTag>> self_;
     avs_time_duration_t timeout_;
     bool is_shutdown_;
 
     auto accessor() {
-        return utils::AccessorBase<ChannelTag>{ env_, self_ };
+        return utils::AccessorBase<ChannelTag>{ self_ };
     }
 
     auto socket() {
         return Socket<typename ChannelTag::SocketTag>(
-                env_,
                 accessor()
                         .template get_method<
                                 jni::Object<typename ChannelTag::SocketTag>()>(
@@ -79,8 +77,7 @@ class SocketChannel {
     }
 
     auto try_connect(const InetAddress &address, int port) {
-        auto resolved_address =
-                InetSocketAddress::from_resolved(env_, address, port);
+        auto resolved_address = InetSocketAddress::from_resolved(address, port);
         if constexpr (std::is_same<ChannelTag, UdpChannelTag>::value) {
             accessor()
                     .template get_method<jni::Object<ChannelTag>(
@@ -95,9 +92,8 @@ class SocketChannel {
                         "connect")(resolved_address);
         utils::NativeUtils::ReadyState wait_state{};
         wait_state.connect = true;
-        if (!utils::NativeUtils::wait_until_ready(env_, as_selectable_channel(),
-                                                  NET_CONNECT_TIMEOUT,
-                                                  wait_state)
+        if (!utils::NativeUtils::wait_until_ready(
+                     as_selectable_channel(), NET_CONNECT_TIMEOUT, wait_state)
                      .connect) {
             return AVS_ETIMEDOUT;
         }
@@ -120,10 +116,12 @@ class SocketChannel {
     }
 
     void create() {
-        self_ = jni::NewGlobal(
-                env_,
-                utils::AccessorBase<ChannelTag>::template get_static_method<
-                        jni::Object<ChannelTag>()>(env_, "open")());
+        self_ = GlobalContext::call_with_env([&](auto &&env) {
+            return jni::NewGlobal(
+                    *env,
+                    utils::AccessorBase<ChannelTag>::template get_static_method<
+                            jni::Object<ChannelTag>()>("open")());
+        });
         is_shutdown_ = false;
         configure_blocking(false);
     }
@@ -139,15 +137,7 @@ class SocketChannel {
 
 public:
     SocketChannel()
-            : env_(*GlobalContext::call_with_env([](auto &&env) {
-                  // This looks insane, however, we can be relatively sure that
-                  // the socket is created from the same thread Anjay operates.
-                  // Otherwise the behavior is undefined anyway, so we may as
-                  // well get this global and store it through the entire
-                  // datagram lifetime.
-                  return env.get();
-              })),
-              self_(),
+            : self_(),
               timeout_(AVS_NET_SOCKET_DEFAULT_RECV_TIMEOUT),
               is_shutdown_() {
         create();
@@ -155,8 +145,12 @@ public:
 
     jni::Local<jni::Object<utils::SelectableChannel>>
     as_selectable_channel() const {
-        return jni::Cast<utils::SelectableChannel>(
-                env_, jni::Class<utils::SelectableChannel>::Find(env_), self_);
+        return GlobalContext::call_with_env([&](auto &&env) {
+            return jni::Cast<utils::SelectableChannel>(
+                    *env,
+                    jni::Class<utils::SelectableChannel>::Find(*env),
+                    self_);
+        });
     }
 
     void close() {
@@ -170,8 +164,7 @@ public:
 
         recreate_if_required();
         avs_errno_t error = AVS_EHOSTUNREACH;
-        for (const InetAddress &addr :
-             InetAddress::get_all_by_name(env_, host)) {
+        for (const InetAddress &addr : InetAddress::get_all_by_name(host)) {
             if (!(error = try_connect(addr, std::stoi(port)))) {
                 return;
             }
@@ -187,7 +180,7 @@ public:
         const avs_time_monotonic_t deadline =
                 avs_time_monotonic_add(avs_time_monotonic_now(),
                                        NET_SEND_TIMEOUT);
-        utils::BufferView byte_buffer{ env_, const_cast<void *>(buffer),
+        utils::BufferView byte_buffer{ const_cast<void *>(buffer),
                                        buffer_length };
         size_t sent_so_far = 0;
 
@@ -201,7 +194,7 @@ public:
                 timeout = AVS_TIME_DURATION_ZERO;
             }
             if (utils::NativeUtils::wait_until_ready(
-                        env_, as_selectable_channel(), timeout, wait_state)
+                        as_selectable_channel(), timeout, wait_state)
                         .write) {
                 return accessor()
                         .template get_method<jni::jint(
@@ -245,12 +238,12 @@ public:
         utils::NativeUtils::ReadyState wait_state{};
         wait_state.read = true;
 
-        if (!utils::NativeUtils::wait_until_ready(env_, as_selectable_channel(),
-                                                  timeout_, wait_state)
+        if (!utils::NativeUtils::wait_until_ready(
+                     as_selectable_channel(), timeout_, wait_state)
                      .read) {
             avs_throw(SocketError(AVS_ETIMEDOUT));
         }
-        utils::BufferView byte_buffer{ env_, buffer, buffer_length };
+        utils::BufferView byte_buffer{ buffer, buffer_length };
         try {
             int read = accessor()
                                .template get_method<jni::jint(
@@ -272,13 +265,12 @@ public:
             accessor()
                     .template get_method<jni::Object<ChannelTag>(
                             jni::Object<SocketAddress>)>("bind")(
-                            InetSocketAddress::from_host_port(env_, localaddr,
-                                                              port));
+                            InetSocketAddress::from_host_port(localaddr, port));
         } else {
             accessor()
                     .template get_method<jni::Object<ChannelTag>(
                             jni::Object<SocketAddress>)>("bind")(
-                            InetSocketAddress::from_port(env_, port));
+                            InetSocketAddress::from_port(port));
         }
     }
 

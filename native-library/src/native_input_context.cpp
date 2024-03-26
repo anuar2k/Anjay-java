@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,43 +24,42 @@
 #include "./util_classes/byte_buffer.hpp"
 
 NativeInputContext::NativeInputContext(
-        jni::JNIEnv &env,
-        jni::Object<utils::NativeInputContextPointer> &context)
-        : ctx_(utils::NativeInputContextPointer::into_native(env, context)) {}
+        jni::JNIEnv &, jni::Object<utils::NativeInputContextPointer> &context)
+        : ctx_(utils::NativeInputContextPointer::into_native(context)) {}
 
 jni::jint
-NativeInputContext::get_i32(jni::JNIEnv &env,
+NativeInputContext::get_i32(jni::JNIEnv &,
                             jni::Object<details::InputCtx<int32_t>> &ctx) {
-    return get_value<int32_t>(env, ctx, &anjay_get_i32);
+    return get_value<int32_t>(ctx, &anjay_get_i32);
 }
 
 jni::jint
-NativeInputContext::get_i64(jni::JNIEnv &env,
+NativeInputContext::get_i64(jni::JNIEnv &,
                             jni::Object<details::InputCtx<int64_t>> &ctx) {
-    return get_value<int64_t>(env, ctx, &anjay_get_i64);
+    return get_value<int64_t>(ctx, &anjay_get_i64);
 }
 
 jni::jint
-NativeInputContext::get_bool(jni::JNIEnv &env,
+NativeInputContext::get_bool(jni::JNIEnv &,
                              jni::Object<details::InputCtx<bool>> &ctx) {
-    return get_value<bool>(env, ctx, &anjay_get_bool);
+    return get_value<bool>(ctx, &anjay_get_bool);
 }
 
 jni::jint
-NativeInputContext::get_float(jni::JNIEnv &env,
+NativeInputContext::get_float(jni::JNIEnv &,
                               jni::Object<details::InputCtx<float>> &ctx) {
-    return get_value<float>(env, ctx, &anjay_get_float);
+    return get_value<float>(ctx, &anjay_get_float);
 }
 
 jni::jint
-NativeInputContext::get_double(jni::JNIEnv &env,
+NativeInputContext::get_double(jni::JNIEnv &,
                                jni::Object<details::InputCtx<double>> &ctx) {
-    return get_value<double>(env, ctx, &anjay_get_double);
+    return get_value<double>(ctx, &anjay_get_double);
 }
 
 jni::jint NativeInputContext::get_string(
-        jni::JNIEnv &env, jni::Object<details::InputCtx<std::string>> &ctx) {
-    return get_value<std::string>(env, ctx, [&](auto *ctx, auto *out_value) {
+        jni::JNIEnv &, jni::Object<details::InputCtx<std::string>> &ctx) {
+    return get_value<std::string>(ctx, [&](auto *ctx, auto *out_value) {
         int result;
         do {
             char chunk[1024];
@@ -74,20 +73,20 @@ jni::jint NativeInputContext::get_string(
 }
 
 jni::jint NativeInputContext::get_objlnk(
-        jni::JNIEnv &env, jni::Object<details::InputCtx<utils::Objlnk>> &ctx) {
-    return get_value<utils::Objlnk>(env, ctx, [&](auto *ctx, auto *out_value) {
+        jni::JNIEnv &, jni::Object<details::InputCtx<utils::Objlnk>> &ctx) {
+    return get_value<utils::Objlnk>(ctx, [&](auto *ctx, auto *out_value) {
         return anjay_get_objlnk(ctx, &out_value->oid, &out_value->iid);
     });
 }
 
 jni::jint
-NativeInputContext::get_bytes(jni::JNIEnv &env,
+NativeInputContext::get_bytes(jni::JNIEnv &,
                               jni::Object<details::InputCtx<uint8_t[]>> &ctx) {
     auto context_accessor =
-            utils::AccessorBase<details::InputCtx<uint8_t[]>>{ env, ctx };
+            utils::AccessorBase<details::InputCtx<uint8_t[]>>{ ctx };
     auto slice = utils::ByteBuffer(
-            env, context_accessor.get_value<jni::Object<utils::ByteBuffer>>(
-                         "slice"));
+            context_accessor.get_value<jni::Object<utils::ByteBuffer>>(
+                    "slice"));
     size_t capacity = slice.capacity();
     size_t bytes_read = 0;
     bool message_finished = false;

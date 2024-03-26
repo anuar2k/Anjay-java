@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,17 +21,17 @@ plugins {
 }
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 dependencies {
-    compile project(':library')
-    compile group: 'com.beust', name: 'jcommander', version: '1.80'
-    compile group: 'commons-codec', name: 'commons-codec', version: '1.15'
+    implementation project(':library')
+    implementation group: 'com.beust', name: 'jcommander', version: '1.82'
+    implementation group: 'commons-codec', name: 'commons-codec', version: '1.15'
 }
 
 application {
-    mainClassName = 'com.avsystem.anjay.demo.Test'
+    mainClass = 'com.avsystem.anjay.demo.Test'
 }
 
 jar {
@@ -42,10 +42,13 @@ jar {
     }
 
     from {
-        configurations.runtime.collect { zipTree(it) }
+        configurations.runtimeClasspath.collect { zipTree(it) }
     }
+
+    duplicatesStrategy = 'exclude'
 }
 
 googleJavaFormat {
+    toolVersion = '1.7'
     options style: 'AOSP'
 }

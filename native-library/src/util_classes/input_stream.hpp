@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,7 @@ class InputStream {
                     static_cast<jni::Object<InputStream> *>(arg);
             auto arr = jni::Array<jni::jbyte>::New(*env, *inout_size);
             int bytes_read =
-                    utils::AccessorBase<utils::InputStream>{ *env,
-                                                             *input_stream }
+                    utils::AccessorBase<utils::InputStream>{ *input_stream }
                             .get_method<jni::jint(jni::Array<jni::jbyte>,
                                                   jni::jint, jni::jint)>(
                                     "read")(arr, 0, *inout_size);

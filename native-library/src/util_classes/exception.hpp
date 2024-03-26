@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,21 +106,24 @@ struct AnjayException : public jni::PendingJavaException {
         return "com/avsystem/anjay/AnjayException";
     }
 
-    AnjayException(JNIEnv &env, jni::jint error_code, const std::string &str) {
-        auto java_exception = utils::construct<AnjayException>(
-                env, error_code, jni::Make<jni::String>(env, str));
-        env.Throw(reinterpret_cast<::jthrowable>(java_exception.get()));
+    AnjayException(jni::jint error_code, const std::string &str) {
+        GlobalContext::call_with_env([&](auto &&env) {
+            auto java_exception = utils::construct<AnjayException>(
+                    error_code, jni::Make<jni::String>(*env, str));
+            env->Throw(reinterpret_cast<::jthrowable>(java_exception.get()));
+        });
     }
 };
 
 struct ClassCastException : public jni::PendingJavaException {
-    ClassCastException(JNIEnv &env, const char *str)
-            : jni::PendingJavaException() {
-        env.ThrowNew(env.FindClass("java/lang/ClassCastException"), str);
+    ClassCastException(const char *str) : jni::PendingJavaException() {
+        GlobalContext::call_with_env([&](auto &&env) {
+            env->ThrowNew(env->FindClass("java/lang/ClassCastException"), str);
+        });
     }
 
-    ClassCastException(JNIEnv &env, const std::string &str)
-            : ClassCastException(env, str.c_str()) {}
+    ClassCastException(const std::string &str)
+            : ClassCastException(str.c_str()) {}
 };
 
 struct IllegalArgumentException : public jni::PendingJavaException {
@@ -129,8 +132,18 @@ struct IllegalArgumentException : public jni::PendingJavaException {
         env.ThrowNew(env.FindClass("java/lang/IllegalArgumentException"), str);
     }
 
+    IllegalArgumentException(const char *str) : jni::PendingJavaException() {
+        GlobalContext::call_with_env([&](auto &&env) {
+            env->ThrowNew(env->FindClass("java/lang/IllegalArgumentException"),
+                          str);
+        });
+    }
+
     IllegalArgumentException(JNIEnv &env, const std::string &str)
             : IllegalArgumentException(env, str.c_str()) {}
+
+    IllegalArgumentException(const std::string &str)
+            : IllegalArgumentException(str.c_str()) {}
 };
 
 struct IllegalStateException : public jni::PendingJavaException {
@@ -139,19 +152,32 @@ struct IllegalStateException : public jni::PendingJavaException {
         env.ThrowNew(env.FindClass("java/lang/IllegalStateException"), str);
     }
 
+    IllegalStateException(const char *str) : jni::PendingJavaException() {
+        GlobalContext::call_with_env([&](auto &&env) {
+            env->ThrowNew(env->FindClass("java/lang/IllegalStateException"),
+                          str);
+        });
+    }
+
     IllegalStateException(JNIEnv &env, const std::string &str)
             : IllegalStateException(env, str.c_str()) {}
+
+    IllegalStateException(const std::string &str)
+            : IllegalStateException(str.c_str()) {}
 };
 
 struct UnsupportedOperationException : public jni::PendingJavaException {
-    UnsupportedOperationException(JNIEnv &env, const char *str)
+    UnsupportedOperationException(const char *str)
             : jni::PendingJavaException() {
-        env.ThrowNew(env.FindClass("java/lang/UnsupportedOperationException"),
-                     str);
+        GlobalContext::call_with_env([&](auto &&env) {
+            env->ThrowNew(env->FindClass(
+                                  "java/lang/UnsupportedOperationException"),
+                          str);
+        });
     }
 
-    UnsupportedOperationException(JNIEnv &env, const std::string &str)
-            : UnsupportedOperationException(env, str.c_str()) {}
+    UnsupportedOperationException(const std::string &str)
+            : UnsupportedOperationException(str.c_str()) {}
 };
 
 #define avs_throw(e)                       \

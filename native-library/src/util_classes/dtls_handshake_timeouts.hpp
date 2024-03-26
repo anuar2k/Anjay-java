@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,14 +31,13 @@ struct DtlsHandshakeTimeouts {
     }
 
     static avs_net_dtls_handshake_timeouts_t
-    into_native(jni::JNIEnv &env,
-                const jni::Object<DtlsHandshakeTimeouts> &instance) {
-        auto accessor = AccessorBase<DtlsHandshakeTimeouts>{ env, instance };
+    into_native(const jni::Object<DtlsHandshakeTimeouts> &instance) {
+        auto accessor = AccessorBase<DtlsHandshakeTimeouts>{ instance };
         avs_net_dtls_handshake_timeouts_t result{};
         result.min = Duration::into_native(
-                env, accessor.get_value<jni::Object<Duration>>("min"));
+                accessor.get_value<jni::Object<Duration>>("min"));
         result.max = Duration::into_native(
-                env, accessor.get_value<jni::Object<Duration>>("max"));
+                accessor.get_value<jni::Object<Duration>>("max"));
         return result;
     }
 };

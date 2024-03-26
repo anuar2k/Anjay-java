@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,15 +90,13 @@ class NativeInputContext {
     anjay_input_ctx_t *ctx_;
 
     template <typename T, typename Getter>
-    int get_value(jni::JNIEnv &env,
-                  jni::Object<details::InputCtx<T>> &ctx,
-                  Getter &&getter) {
+    int get_value(jni::Object<details::InputCtx<T>> &ctx, Getter &&getter) {
         T value;
         int result = getter(ctx_, &value);
         if (result) {
             return result;
         }
-        auto accessor = utils::AccessorBase<details::InputCtx<T>>{ env, ctx };
+        auto accessor = utils::AccessorBase<details::InputCtx<T>>{ ctx };
         accessor.template set_value<T>("value", value);
         return 0;
     }

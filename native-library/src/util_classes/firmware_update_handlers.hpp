@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,8 @@ struct FirmwareUpdateHandlers {
 
     class Accessor : public AccessorBase<FirmwareUpdateHandlers> {
     public:
-        explicit Accessor(jni::JNIEnv &env,
-                          const jni::Object<FirmwareUpdateHandlers> &handlers)
-                : AccessorBase(env, handlers) {}
+        explicit Accessor(const jni::Object<FirmwareUpdateHandlers> &handlers)
+                : AccessorBase(handlers) {}
 
         int stream_open(const char *package_uri,
                         const anjay_etag_t *package_etag) {
@@ -42,19 +41,24 @@ struct FirmwareUpdateHandlers {
                     std::vector<jni::jbyte> etag_vec(etag->value,
                                                      etag->value + etag->size);
                     return utils::Optional::of(
-                            env_,
-                            jni::Make<jni::Array<jni::jbyte>>(env_, etag_vec));
+                            GlobalContext::call_with_env([&](auto &&env) {
+                                return jni::Make<jni::Array<jni::jbyte>>(
+                                        *env, etag_vec);
+                            }));
                 } else {
-                    return utils::Optional::empty(env_);
+                    return utils::Optional::empty();
                 }
             };
 
             auto make_uri = [&](const char *uri) {
                 if (uri) {
                     return utils::Optional::of(
-                            env_, jni::Make<jni::String>(env_, package_uri));
+                            GlobalContext::call_with_env([&](auto &&env) {
+                                return jni::Make<jni::String>(*env,
+                                                              package_uri);
+                            }));
                 } else {
-                    return utils::Optional::empty(env_);
+                    return utils::Optional::empty();
                 }
             };
 
@@ -68,7 +72,10 @@ struct FirmwareUpdateHandlers {
             std::vector<jni::jbyte> data_vec((const uint8_t *) data,
                                              (const uint8_t *) data + length);
             return get_method<jni::jint(jni::Array<jni::jbyte>)>("streamWrite")(
-                    jni::Make<jni::Array<jni::jbyte>>(env_, data_vec));
+                    GlobalContext::call_with_env([&](auto &&env) {
+                        return jni::Make<jni::Array<jni::jbyte>>(*env,
+                                                                 data_vec);
+                    }));
         }
 
         int stream_finish() {
@@ -83,7 +90,9 @@ struct FirmwareUpdateHandlers {
             auto result = get_method<jni::String()>("getName")();
             if (result) {
                 return std::make_optional<std::string>(
-                        jni::Make<std::string>(env_, result));
+                        GlobalContext::call_with_env([&](auto &&env) {
+                            return jni::Make<std::string>(*env, result);
+                        }));
             } else {
                 return {};
             }
@@ -93,7 +102,9 @@ struct FirmwareUpdateHandlers {
             auto result = get_method<jni::String()>("getVersion")();
             if (result) {
                 return std::make_optional<std::string>(
-                        jni::Make<std::string>(env_, result));
+                        GlobalContext::call_with_env([&](auto &&env) {
+                            return jni::Make<std::string>(*env, result);
+                        }));
             } else {
                 return {};
             }
@@ -107,9 +118,11 @@ struct FirmwareUpdateHandlers {
         get_coap_tx_params(const char *download_uri) {
             auto tx_params = get_method<jni::Object<utils::CoapUdpTxParams>(
                     jni::String)>("getCoapTxParams")(
-                    jni::Make<jni::String>(env_, download_uri));
+                    GlobalContext::call_with_env([&](auto &&env) {
+                        return jni::Make<jni::String>(*env, download_uri);
+                    }));
             if (tx_params) {
-                return { utils::CoapUdpTxParams::into_native(env_, tx_params) };
+                return { utils::CoapUdpTxParams::into_native(tx_params) };
             } else {
                 return {};
             }
@@ -121,11 +134,14 @@ struct FirmwareUpdateHandlers {
             auto security_config =
                     get_method<jni::Object<utils::SecurityConfig>(jni::String)>(
                             "getSecurityConfig")(
-                            jni::Make<jni::String>(env_, download_uri));
+                            GlobalContext::call_with_env([&](auto &&env) {
+                                return jni::Make<jni::String>(*env,
+                                                              download_uri);
+                            }));
             if (!security_config) {
                 return {};
             } else {
-                return std::make_unique<utils::SecurityConfig>(anjay, env_,
+                return std::make_unique<utils::SecurityConfig>(anjay,
                                                                security_config);
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +35,7 @@ struct FirmwareUpdateInitialResult {
     }
 
     static anjay_fw_update_initial_result_t
-    into_native(jni::JNIEnv &env,
-                const jni::Object<FirmwareUpdateInitialResult> &instance) {
+    into_native(const jni::Object<FirmwareUpdateInitialResult> &instance) {
         static std::unordered_map<std::string, anjay_fw_update_initial_result_t>
                 MAPPING{ { "UPDATING", ANJAY_FW_UPDATE_INITIAL_UPDATING },
                          { "DOWNLOADED", ANJAY_FW_UPDATE_INITIAL_DOWNLOADED },
@@ -46,17 +45,20 @@ struct FirmwareUpdateInitialResult {
                          { "INTEGRITY_FAILURE",
                            ANJAY_FW_UPDATE_INITIAL_INTEGRITY_FAILURE },
                          { "FAILED", ANJAY_FW_UPDATE_INITIAL_FAILED } };
-        auto clazz = jni::Class<FirmwareUpdateInitialResult>::Find(env);
-        auto value = jni::Make<std::string>(
-                env,
-                instance.Call(env,
-                              clazz.GetMethod<jni::String()>(env, "name")));
-        auto mapped_to = MAPPING.find(value);
-        if (mapped_to == MAPPING.end()) {
-            avs_throw(IllegalArgumentException(
-                    env, "Unsupported enum value: " + value));
-        }
-        return mapped_to->second;
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<FirmwareUpdateInitialResult>::Find(*env);
+            auto value = jni::Make<std::string>(
+                    *env,
+                    instance.Call(*env,
+                                  clazz.template GetMethod<jni::String()>(
+                                          *env, "name")));
+            auto mapped_to = MAPPING.find(value);
+            if (mapped_to == MAPPING.end()) {
+                avs_throw(IllegalArgumentException(
+                        *env, "Unsupported enum value: " + value));
+            }
+            return mapped_to->second;
+        });
     }
 };
 

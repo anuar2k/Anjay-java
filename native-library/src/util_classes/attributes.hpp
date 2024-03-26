@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,9 @@ struct ObjectInstanceAttrs {
     }
 
     static anjay_dm_oi_attributes_t
-    into_native(jni::JNIEnv &env,
-                const jni::Object<ObjectInstanceAttrs> &attrs) {
+    into_native(const jni::Object<ObjectInstanceAttrs> &attrs) {
         anjay_dm_oi_attributes_t native_attrs;
-        auto accessor = AccessorBase<ObjectInstanceAttrs>{ env, attrs };
+        auto accessor = AccessorBase<ObjectInstanceAttrs>{ attrs };
 
         native_attrs.min_period = accessor.get_value<int>("minPeriod");
         native_attrs.max_period = accessor.get_value<int>("maxPeriod");
@@ -44,12 +43,15 @@ struct ObjectInstanceAttrs {
     }
 
     static jni::Local<jni::Object<ObjectInstanceAttrs>>
-    into_java(jni::JNIEnv &env, const anjay_dm_oi_attributes_t *attrs) {
-        auto clazz = jni::Class<ObjectInstanceAttrs>::Find(env);
-        auto ctor = clazz.GetConstructor<jni::jint, jni::jint, jni::jint,
-                                         jni::jint>(env);
-        return clazz.New(env, ctor, attrs->min_period, attrs->max_period,
-                         attrs->min_eval_period, attrs->max_eval_period);
+    into_java(const anjay_dm_oi_attributes_t *attrs) {
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<ObjectInstanceAttrs>::Find(*env);
+            auto ctor =
+                    clazz.template GetConstructor<jni::jint, jni::jint,
+                                                  jni::jint, jni::jint>(*env);
+            return clazz.New(*env, ctor, attrs->min_period, attrs->max_period,
+                             attrs->min_eval_period, attrs->max_eval_period);
+        });
     }
 };
 
@@ -67,10 +69,9 @@ struct ObjectInstanceAttrsByReference {
     }
 
     static jni::Local<jni::Object<ObjectInstanceAttrs>>
-    get_value(jni::JNIEnv &env,
-              const jni::Object<ObjectInstanceAttrsByReference> &instance) {
+    get_value(const jni::Object<ObjectInstanceAttrsByReference> &instance) {
         auto accessor =
-                AccessorBase<ObjectInstanceAttrsByReference>{ env, instance };
+                AccessorBase<ObjectInstanceAttrsByReference>{ instance };
         return accessor.get_value<jni::Object<ObjectInstanceAttrs>>("value");
     }
 };
@@ -81,12 +82,11 @@ struct ResourceAttrs {
     }
 
     static anjay_dm_r_attributes_t
-    into_native(jni::JNIEnv &env, const jni::Object<ResourceAttrs> &attrs) {
+    into_native(const jni::Object<ResourceAttrs> &attrs) {
         anjay_dm_r_attributes_t native_attrs;
-        auto accessor = AccessorBase<ResourceAttrs>{ env, attrs };
+        auto accessor = AccessorBase<ResourceAttrs>{ attrs };
 
         native_attrs.common = ObjectInstanceAttrs::into_native(
-                env,
                 accessor.get_value<jni::Object<ObjectInstanceAttrs>>("common"));
         native_attrs.greater_than = accessor.get_value<double>("greaterThan");
         native_attrs.less_than = accessor.get_value<double>("lessThan");
@@ -96,15 +96,17 @@ struct ResourceAttrs {
     }
 
     static jni::Local<jni::Object<ResourceAttrs>>
-    into_java(jni::JNIEnv &env, const anjay_dm_r_attributes_t *attrs) {
-        auto clazz = jni::Class<ResourceAttrs>::Find(env);
-        auto ctor =
-                clazz.GetConstructor<jni::Object<ObjectInstanceAttrs>,
-                                     jni::jdouble, jni::jdouble, jni::jdouble>(
-                        env);
-        return clazz.New(env, ctor,
-                         ObjectInstanceAttrs::into_java(env, &attrs->common),
-                         attrs->greater_than, attrs->less_than, attrs->step);
+    into_java(const anjay_dm_r_attributes_t *attrs) {
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<ResourceAttrs>::Find(*env);
+            auto ctor = clazz.template GetConstructor<
+                    jni::Object<ObjectInstanceAttrs>, jni::jdouble,
+                    jni::jdouble, jni::jdouble>(*env);
+            return clazz.New(*env, ctor,
+                             ObjectInstanceAttrs::into_java(&attrs->common),
+                             attrs->greater_than, attrs->less_than,
+                             attrs->step);
+        });
     }
 };
 
@@ -122,9 +124,8 @@ struct ResourceAttrsByReference {
     }
 
     static jni::Local<jni::Object<ResourceAttrs>>
-    get_value(jni::JNIEnv &env,
-              const jni::Object<ResourceAttrsByReference> &instance) {
-        auto accessor = AccessorBase<ResourceAttrsByReference>{ env, instance };
+    get_value(const jni::Object<ResourceAttrsByReference> &instance) {
+        auto accessor = AccessorBase<ResourceAttrsByReference>{ instance };
         return accessor.get_value<jni::Object<ResourceAttrs>>("value");
     }
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ plugins {
 }
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 cmake {
@@ -27,8 +27,8 @@ cmake {
     buildConfig = 'Debug'
     buildClean = false
     buildTarget = 'check'
-    def.WITH_INTEGRATION_TEST = 'ON'
-    def.JAVA_HOME = System.getProperty('java.home')
+    delegate.def.WITH_INTEGRATION_TEST = 'ON'
+    delegate.def.JAVA_HOME = System.getProperty('java.home')
 }
 
 task check {

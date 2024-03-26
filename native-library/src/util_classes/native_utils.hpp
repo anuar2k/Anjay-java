@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,17 +44,16 @@ struct NativeUtils {
         ReadyState()
                 : read(false), write(false), accept(false), connect(false) {}
 
-        ReadyState(jni::JNIEnv &env, const jni::Object<ReadyState> &state)
-                : ReadyState() {
-            auto accessor = AccessorBase<ReadyState>{ env, state };
+        ReadyState(const jni::Object<ReadyState> &state) : ReadyState() {
+            auto accessor = AccessorBase<ReadyState>{ state };
             read = accessor.get_value<jni::jboolean>("read");
             write = accessor.get_value<jni::jboolean>("write");
             accept = accessor.get_value<jni::jboolean>("accept");
             connect = accessor.get_value<jni::jboolean>("connect");
         }
 
-        jni::Local<jni::Object<ReadyState>> into_java(jni::JNIEnv &env) {
-            return construct<ReadyState>(env, static_cast<jni::jboolean>(read),
+        jni::Local<jni::Object<ReadyState>> into_java() {
+            return construct<ReadyState>(static_cast<jni::jboolean>(read),
                                          static_cast<jni::jboolean>(write),
                                          static_cast<jni::jboolean>(connect),
                                          static_cast<jni::jboolean>(accept));
@@ -62,19 +61,16 @@ struct NativeUtils {
     };
 
     static ReadyState
-    wait_until_ready(jni::JNIEnv &env,
-                     const jni::Object<SelectableChannel> &channel,
+    wait_until_ready(const jni::Object<SelectableChannel> &channel,
                      avs_time_duration_t timeout,
                      ReadyState waitStates) {
         return ReadyState(
-                env,
                 AccessorBase<NativeUtils>::get_static_method<
                         jni::Object<ReadyState>(jni::Object<SelectableChannel>,
                                                 jni::Object<Duration>,
                                                 jni::Object<ReadyState>)>(
-                        env, "waitUntilReady")(
-                        channel, Duration::into_java(env, timeout),
-                        waitStates.into_java(env)));
+                        "waitUntilReady")(channel, Duration::into_java(timeout),
+                                          waitStates.into_java()));
     }
 };
 

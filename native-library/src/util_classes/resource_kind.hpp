@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ struct ResourceKind {
     }
 
     static anjay_dm_resource_kind_t
-    into_native(jni::JNIEnv &env, const jni::Object<ResourceKind> &instance) {
+    into_native(const jni::Object<ResourceKind> &instance) {
         static std::unordered_map<std::string, anjay_dm_resource_kind_t>
                 MAPPING{
                     { "R", ANJAY_DM_RES_R },   { "W", ANJAY_DM_RES_W },
@@ -42,14 +42,20 @@ struct ResourceKind {
                     { "WM", ANJAY_DM_RES_WM }, { "RWM", ANJAY_DM_RES_RWM },
                     { "E", ANJAY_DM_RES_E },   { "BS_RW", ANJAY_DM_RES_BS_RW }
                 };
-        auto clazz = jni::Class<ResourceKind>::Find(env);
-        auto value = jni::Make<std::string>(
-                env, instance.Call(
-                             env, clazz.GetMethod<jni::String()>(env, "name")));
+        auto clazz = GlobalContext::call_with_env([&](auto &&env) {
+            return jni::Class<ResourceKind>::Find(*env);
+        });
+        auto value = GlobalContext::call_with_env([&](auto &&env) {
+            return jni::Make<std::string>(
+                    *env,
+                    instance.Call(*env,
+                                  clazz.GetMethod<jni::String()>(*env,
+                                                                 "name")));
+        });
         auto mapped_to = MAPPING.find(value);
         if (mapped_to == MAPPING.end()) {
-            avs_throw(IllegalArgumentException(env, "Unsupported enum value: "
-                                                            + value));
+            avs_throw(IllegalArgumentException("Unsupported enum value: "
+                                               + value));
         }
         return mapped_to->second;
     }

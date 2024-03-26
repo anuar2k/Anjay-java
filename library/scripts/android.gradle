@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,42 +68,43 @@ signing {
     sign publishing.publications
 }
 
-project.afterEvaluate {
-    publishing {
-        repositories {
-            maven {
-                url 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
-                credentials(PasswordCredentials)
-            }
+publishing {
+    repositories {
+        maven {
+            url 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
+            credentials(PasswordCredentials)
         }
+    }
 
-        publications {
-            maven(MavenPublication) {
-                groupId 'com.avsystem.anjay'
-                artifactId 'anjay-android'
-                from components.release
+    publications {
+        maven(MavenPublication) {
+            groupId 'com.avsystem.anjay'
+            artifactId 'anjay-android'
 
-                pom {
-                    name = 'Anjay'
-                    description = 'Anjay LwM2M library'
-                    url = 'https://www.avsystem.com/products/anjay/'
-                    licenses {
-                        license {
-                            name = 'The Apache License, Version 2.0'
-                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                        }
-                    }
-                    developers {
-                        developer {
-                            name = 'AVSystem'
-                            email = 'avsystem@avsystem.com'
-                        }
-                    }
-                    scm {
-                        connection = 'scm:git:git://github.com/AVSystem/Anjay-java.git'
-                        url = 'https://github.com/AVSystem/Anjay-java'
+            pom {
+                name = 'Anjay'
+                description = 'Anjay LwM2M library'
+                url = 'https://www.avsystem.com/products/anjay/'
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
                     }
                 }
+                developers {
+                    developer {
+                        name = 'AVSystem'
+                        email = 'avsystem@avsystem.com'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/AVSystem/Anjay-java.git'
+                    url = 'https://github.com/AVSystem/Anjay-java'
+                }
+            }
+
+            afterEvaluate {
+                from components.release
             }
         }
     }

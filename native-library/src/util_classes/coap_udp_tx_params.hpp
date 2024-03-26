@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,12 +31,11 @@ struct CoapUdpTxParams {
     }
 
     static avs_coap_udp_tx_params_t
-    into_native(jni::JNIEnv &env,
-                const jni::Object<CoapUdpTxParams> &instance) {
-        auto accessor = AccessorBase<CoapUdpTxParams>{ env, instance };
+    into_native(const jni::Object<CoapUdpTxParams> &instance) {
+        auto accessor = AccessorBase<CoapUdpTxParams>{ instance };
         avs_coap_udp_tx_params_t result{};
         result.ack_timeout = Duration::into_native(
-                env, accessor.get_value<jni::Object<Duration>>("ackTimeout"));
+                accessor.get_value<jni::Object<Duration>>("ackTimeout"));
         result.ack_random_factor =
                 accessor.get_value<double>("ackRandomFactor");
         result.max_retransmit = accessor.get_value<int>("maxRetransmit");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,16 +24,16 @@
 
 using namespace std;
 
-NativeAnjay::NativeAnjay(jni::JNIEnv &env,
+NativeAnjay::NativeAnjay(jni::JNIEnv &,
                          jni::Object<utils::Configuration> &config)
         : endpoint_name_(),
           udp_tx_params_(ANJAY_COAP_DEFAULT_UDP_TX_PARAMS),
           objects_(),
           anjay_() {
-    auto config_accessor = utils::Configuration::Accessor{ env, config };
+    auto config_accessor = utils::Configuration::Accessor{ config };
     auto endpoint_name = config_accessor.get_endpoint_name();
     if (!endpoint_name) {
-        avs_throw(IllegalArgumentException(env, "endpoint name MUST be set"));
+        avs_throw(IllegalArgumentException("endpoint name MUST be set"));
     }
     endpoint_name_ = *endpoint_name;
     anjay_configuration_t configuration{};
@@ -74,7 +74,7 @@ NativeAnjay::NativeAnjay(jni::JNIEnv &env,
     }
 
     if (!(anjay_ = decltype(anjay_)(anjay_new(&configuration), anjay_delete))) {
-        avs_throw(AnjayException(env, -1, "could not instantiate anjay"));
+        avs_throw(AnjayException(-1, "could not instantiate anjay"));
     }
 }
 
@@ -109,7 +109,7 @@ NativeAnjay::get_sched_time_to_next(jni::JNIEnv &env) {
     if (!avs_time_duration_valid(duration)) {
         return jni::Local<jni::Object<utils::Duration>>(env, nullptr);
     }
-    return utils::Duration::into_java(env, duration);
+    return utils::Duration::into_java(duration);
 }
 
 jni::jint NativeAnjay::schedule_registration_update(jni::JNIEnv &,
@@ -118,35 +118,31 @@ jni::jint NativeAnjay::schedule_registration_update(jni::JNIEnv &,
 }
 
 jni::jint NativeAnjay::schedule_transport_reconnect(
-        jni::JNIEnv &env,
-        jni::Object<utils::NativeTransportSet> &transport_set) {
+        jni::JNIEnv &, jni::Object<utils::NativeTransportSet> &transport_set) {
     return anjay_transport_schedule_reconnect(
             anjay_.get(),
-            utils::NativeTransportSet::into_transport_set(env, transport_set));
+            utils::NativeTransportSet::into_transport_set(transport_set));
 }
 
 jni::jboolean NativeAnjay::transport_is_offline(
-        jni::JNIEnv &env,
-        jni::Object<utils::NativeTransportSet> &transport_set) {
+        jni::JNIEnv &, jni::Object<utils::NativeTransportSet> &transport_set) {
     return anjay_transport_is_offline(
             anjay_.get(),
-            utils::NativeTransportSet::into_transport_set(env, transport_set));
+            utils::NativeTransportSet::into_transport_set(transport_set));
 }
 
 jni::jint NativeAnjay::transport_enter_offline(
-        jni::JNIEnv &env,
-        jni::Object<utils::NativeTransportSet> &transport_set) {
+        jni::JNIEnv &, jni::Object<utils::NativeTransportSet> &transport_set) {
     return anjay_transport_enter_offline(
             anjay_.get(),
-            utils::NativeTransportSet::into_transport_set(env, transport_set));
+            utils::NativeTransportSet::into_transport_set(transport_set));
 }
 
 jni::jint NativeAnjay::transport_exit_offline(
-        jni::JNIEnv &env,
-        jni::Object<utils::NativeTransportSet> &transport_set) {
+        jni::JNIEnv &, jni::Object<utils::NativeTransportSet> &transport_set) {
     return anjay_transport_exit_offline(
             anjay_.get(),
-            utils::NativeTransportSet::into_transport_set(env, transport_set));
+            utils::NativeTransportSet::into_transport_set(transport_set));
 }
 
 jni::jint NativeAnjay::notify_changed(jni::JNIEnv &,
@@ -168,11 +164,11 @@ jni::jint NativeAnjay::disable_server_with_timeout(
         jni::JNIEnv &env,
         jni::jint ssid,
         jni::Object<utils::Optional> &duration) {
-    auto maybe_duration = utils::Optional{ env, jni::NewLocal(env, duration) };
+    auto maybe_duration = utils::Optional{ jni::NewLocal(env, duration) };
     avs_time_duration_t disable_duration = AVS_TIME_DURATION_INVALID;
     if (maybe_duration.is_present()) {
         disable_duration = utils::Duration::into_native(
-                env, maybe_duration.get<utils::Duration>());
+                maybe_duration.get<utils::Duration>());
     }
     return anjay_disable_server_with_timeout(anjay_.get(), ssid,
                                              disable_duration);
@@ -201,9 +197,9 @@ jni::jboolean NativeAnjay::has_security_config_for_uri(jni::JNIEnv &env,
 }
 
 jni::jint
-NativeAnjay::register_object(jni::JNIEnv &env,
+NativeAnjay::register_object(jni::JNIEnv &,
                              jni::Object<utils::NativeAnjayObject> &object) {
-    auto adapter = make_unique<NativeAnjayObjectAdapter>(anjay_, env, object);
+    auto adapter = make_unique<NativeAnjayObjectAdapter>(anjay_, object);
     int result = adapter->install();
     if (!result) {
         objects_.push_back(move(adapter));

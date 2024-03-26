@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,19 +99,17 @@ class SecurityInfoCert {
     public:
         CertList() : storage_(), chains_() {}
 
-        CertList(jni::JNIEnv &env, const jni::Local<jni::Object<List>> &certs)
-                : CertList() {
+        CertList(const jni::Local<jni::Object<List>> &certs) : CertList() {
             if (!certs.get()) {
                 return;
             }
-            auto list_accessor = AccessorBase<List>{ env, certs };
+            auto list_accessor = AccessorBase<List>{ certs };
             const int size = list_accessor.get_method<jni::jint()>("size")();
             if (size == 0) {
                 return;
             }
 
             class Iterator {
-                jni::JNIEnv &env_;
                 jni::Local<jni::Object<Iterator>> self_;
 
             public:
@@ -119,40 +117,42 @@ class SecurityInfoCert {
                     return "java/util/Iterator";
                 }
 
-                Iterator(jni::JNIEnv &env, const jni::Object<Iterator> &self)
-                        : env_(env), self_(jni::NewLocal(env, self)) {}
+                Iterator(const jni::Object<Iterator> &self)
+                        : self_(GlobalContext::call_with_env([&](auto &&env) {
+                              return jni::NewLocal(*env, self);
+                          })) {}
 
                 jni::Local<jni::Object<>> next() {
-                    return AccessorBase<Iterator>{ env_, self_ }
+                    return AccessorBase<Iterator>{ self_ }
                             .template get_method<jni::Object<>()>("next")();
                 }
 
                 bool has_next() {
-                    return AccessorBase<Iterator>{ env_, self_ }
+                    return AccessorBase<Iterator>{ self_ }
                             .template get_method<jni::jboolean()>("hasNext")();
                 }
             };
 
-            auto certificate_class = jni::Class<CertType>::Find(env);
+            GlobalContext::call_with_env([&](auto &&env) {
+                auto certificate_class = jni::Class<CertType>::Find(*env);
 
-            for (auto it = Iterator{ env, list_accessor.template get_method<
-                                                  jni::Object<Iterator>()>(
-                                                  "iterator")() };
-                 it.has_next();) {
-                auto accessor = AccessorBase<CertType>{
-                    env, jni::Cast(env, certificate_class, it.next())
-                };
+                for (auto it = Iterator{ list_accessor.template get_method<
+                             jni::Object<Iterator>()>("iterator")() };
+                     it.has_next();) {
+                    auto accessor = AccessorBase<CertType>{
+                        jni::Cast(*env, certificate_class, it.next())
+                    };
 
-                if (auto raw_cert =
-                            accessor.template get_nullable_value<jni::jbyte[]>(
-                                    "rawCertificate")) {
-                    storage_.emplace_back(std::move(*raw_cert));
-                    chains_.emplace_back(
-                            detail::CertificateType<T>::from_buffer(
-                                    storage_.back().data(),
-                                    storage_.back().size()));
+                    if (auto raw_cert = accessor.template get_nullable_value<
+                                        jni::jbyte[]>("rawCertificate")) {
+                        storage_.emplace_back(std::move(*raw_cert));
+                        chains_.emplace_back(
+                                detail::CertificateType<T>::from_buffer(
+                                        storage_.back().data(),
+                                        storage_.back().size()));
+                    }
                 }
-            }
+            });
         }
 
         CertList(const CertList &) = delete;
@@ -183,40 +183,40 @@ public:
         return "com/avsystem/anjay/AnjaySecurityInfoCert";
     }
 
-    SecurityInfoCert(jni::JNIEnv &env,
-                     const jni::Local<jni::Object<SecurityInfoCert>> &instance)
+    SecurityInfoCert(const jni::Local<jni::Object<SecurityInfoCert>> &instance)
             : trusted_certs_(),
               client_certs_(),
               cert_revocation_list_(),
               client_key_() {
-        auto accessor = AccessorBase<SecurityInfoCert>{ env, instance };
+        auto accessor = AccessorBase<SecurityInfoCert>{ instance };
         trusted_certs_ = CertList<avs_crypto_certificate_chain_info_t>{
-            env, accessor.get_value<jni::Object<List>>("trustedCerts")
+            accessor.get_value<jni::Object<List>>("trustedCerts")
         };
         client_certs_ = CertList<avs_crypto_certificate_chain_info_t>{
-            env, accessor.get_value<jni::Object<List>>("clientCert")
+            accessor.get_value<jni::Object<List>>("clientCert")
         };
         cert_revocation_list_ =
                 CertList<avs_crypto_cert_revocation_list_info_t>{
-                    env, accessor.get_value<jni::Object<List>>(
-                                 "certRevocationLists")
+                    accessor.get_value<jni::Object<List>>(
+                            "certRevocationLists")
                 };
         server_cert_validation_ =
                 accessor.get_value<bool>("serverCertValidation");
         if (auto client_key =
                     accessor.get_value<jni::Object<PrivateKey>>("clientKey")) {
-            auto key_accessor = AccessorBase<PrivateKey>{ env, client_key };
+            auto key_accessor = AccessorBase<PrivateKey>{ client_key };
             client_key_ =
                     *key_accessor.get_nullable_value<jni::jbyte[]>("rawKey");
 
-            auto password =
-                    Optional{ env,
-                              key_accessor.get_value<jni::Object<Optional>>(
-                                      "password") };
+            auto password = Optional{
+                key_accessor.get_value<jni::Object<Optional>>("password")
+            };
             if (password) {
                 client_key_password_ =
-                        jni::Make<std::string>(env,
-                                               password.get<jni::StringTag>());
+                        GlobalContext::call_with_env([&](auto &&env) {
+                            return jni::Make<std::string>(
+                                    *env, password.get<jni::StringTag>());
+                        });
             }
         }
     }

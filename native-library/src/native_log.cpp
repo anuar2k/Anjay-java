@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,13 +28,13 @@ void NativeLog::log_handler(avs_log_level_t level,
         try {
             const std::string java_module = "Anjay." + std::string(module);
             auto logger = utils::AccessorBase<utils::Logger>::get_static_method<
-                    jni::Object<utils::Logger>(jni::String)>(*env, "getLogger")(
+                    jni::Object<utils::Logger>(jni::String)>("getLogger")(
                     jni::Make<jni::String>(*env, java_module));
 
-            auto accessor = utils::AccessorBase<utils::Logger>{ *env, logger };
+            auto accessor = utils::AccessorBase<utils::Logger>{ logger };
 
             accessor.get_method<void(jni::Object<utils::Level>, jni::String)>(
-                    "log")(utils::Level::from_native(*env, level),
+                    "log")(utils::Level::from_native(level),
                            jni::Make<jni::String>(*env, message));
         } catch (jni::PendingJavaException &) {
             jni::ExceptionClear(*env);

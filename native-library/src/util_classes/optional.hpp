@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
 namespace utils {
 
 class Optional {
-    jni::JNIEnv &env_;
     jni::Global<jni::Object<Optional>> self_;
 
 public:
@@ -36,37 +35,41 @@ public:
         return is_present();
     }
 
-    Optional(jni::JNIEnv &env, const jni::Local<jni::Object<Optional>> &value)
-            : env_(env), self_(jni::NewGlobal(env, value)) {}
+    Optional(const jni::Local<jni::Object<Optional>> &value)
+            : self_(GlobalContext::call_with_env([&](auto &&env) {
+                  return jni::NewGlobal(*env, value);
+              })) {}
 
     jni::Local<jni::Object<Optional>> into_java() {
-        return jni::NewLocal(env_, self_);
+        return GlobalContext::call_with_env(
+                [&](auto &&env) { return jni::NewLocal(*env, self_); });
     }
 
     bool is_present() const {
-        return AccessorBase<Optional>{ env_, self_ }
-                .get_method<jni::jboolean()>("isPresent")();
+        return AccessorBase<Optional>{ self_ }.get_method<jni::jboolean()>(
+                "isPresent")();
     }
 
     template <typename T>
     jni::Local<jni::Object<T>> get() {
-        return jni::Cast(env_, jni::Class<T>::Find(env_),
-                         AccessorBase<Optional>{ env_, self_ }
-                                 .get_method<jni::Object<>()>("get")());
+        return GlobalContext::call_with_env([&](auto &&env) {
+            return jni::Cast(
+                    *env, jni::Class<T>::Find(*env),
+                    AccessorBase<Optional>{ self_ }.get_method<jni::Object<>()>(
+                            "get")());
+        });
     }
 
     template <typename T>
-    static Optional of(jni::JNIEnv &env, const T &value) {
-        return Optional{ env, AccessorBase<Optional>::get_static_method<
-                                      jni::Object<Optional>(jni::Object<>)>(
-                                      env, "of")(value) };
+    static Optional of(const T &value) {
+        return Optional{ AccessorBase<Optional>::get_static_method<
+                jni::Object<Optional>(jni::Object<>)>("of")(value) };
     }
 
-    static Optional empty(jni::JNIEnv &env) {
+    static Optional empty() {
         return Optional{
-            env,
             AccessorBase<Optional>::get_static_method<jni::Object<Optional>()>(
-                    env, "empty")()
+                    "empty")()
         };
     }
 };

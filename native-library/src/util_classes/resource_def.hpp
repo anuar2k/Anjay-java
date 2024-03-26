@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,13 +36,11 @@ struct ResourceDef {
         return "com/avsystem/anjay/AnjayObject$ResourceDef";
     }
 
-    static ResourceDef into_native(jni::JNIEnv &env,
-                                   const jni::Object<ResourceDef> &instance) {
-        auto accessor = AccessorBase<ResourceDef>{ env, instance };
+    static ResourceDef into_native(const jni::Object<ResourceDef> &instance) {
+        auto accessor = AccessorBase<ResourceDef>{ instance };
         return ResourceDef{
             static_cast<anjay_rid_t>(accessor.get_value<int>("rid")),
             ResourceKind::into_native(
-                    env,
                     accessor.get_value<jni::Object<utils::ResourceKind>>(
                             "kind")),
             accessor.get_value<bool>("present")

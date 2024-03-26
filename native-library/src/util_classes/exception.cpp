@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ void log_and_clear_java_exception(JNIEnv &env,
     // because there's a pending exception.
     jni::ExceptionClear(env);
 
-    auto accessor = AccessorBase<Throwable>{ env, exception };
+    auto accessor = AccessorBase<Throwable>{ exception };
     auto stack_trace =
             accessor.get_method<jni::Array<jni::Object<StackTraceElement>>()>(
                     "getStackTrace")();
@@ -65,7 +65,7 @@ void log_and_clear_java_exception(JNIEnv &env,
                 level, "anjay_jni", file, line, "%s",
                 jni::Make<std::string>(env,
                                        AccessorBase<StackTraceElement>{
-                                               env, stack_trace.Get(env, i) }
+                                               stack_trace.Get(env, i) }
                                                .get_method<jni::String()>(
                                                        "toString")())
                         .c_str());

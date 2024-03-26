@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,10 @@
 namespace utils {
 
 class ByteBuffer {
-    jni::JNIEnv &env_;
     jni::Global<jni::Object<ByteBuffer>> self_;
 
     bool is_direct() {
-        return utils::AccessorBase<ByteBuffer>{ env_, self_ }
+        return utils::AccessorBase<ByteBuffer>{ self_ }
                 .get_method<jni::jboolean()>("isDirect")();
     }
 
@@ -39,40 +38,46 @@ public:
         return "java/nio/ByteBuffer";
     }
 
-    ByteBuffer(jni::JNIEnv &env, const jni::Local<jni::Object<ByteBuffer>> &buf)
-            : env_(env), self_(jni::NewGlobal(env_, buf)) {}
+    ByteBuffer(const jni::Local<jni::Object<ByteBuffer>> &buf)
+            : self_(GlobalContext::call_with_env(
+                      [&](auto &&env) { return jni::NewGlobal(*env, buf); })) {}
 
-    ByteBuffer(jni::JNIEnv &env, size_t size) : env_(env), self_() {
+    ByteBuffer(size_t size) : self_() {
         if (size > static_cast<size_t>(std::numeric_limits<jni::jint>::max())) {
             avs_throw(IllegalArgumentException(
-                    env, "Buffer size exceeds jni::jint max value"));
+                    "Buffer size exceeds jni::jint max value"));
         }
-        self_ = jni::NewGlobal(
-                env_,
-                utils::AccessorBase<ByteBuffer>::get_static_method<
-                        jni::Object<ByteBuffer>(jni::jint)>(
-                        env, "allocateDirect")(static_cast<jni::jint>(size)));
+        self_ = GlobalContext::call_with_env([&](auto &&env) {
+            return jni::NewGlobal(
+                    *env,
+                    utils::AccessorBase<ByteBuffer>::get_static_method<
+                            jni::Object<ByteBuffer>(jni::jint)>(
+                            "allocateDirect")(static_cast<jni::jint>(size)));
+        });
     }
 
     jni::Global<jni::Object<ByteBuffer>> into_java() {
-        return jni::NewGlobal(env_, self_);
+        return GlobalContext::call_with_env(
+                [&](auto &&env) { return jni::NewGlobal(*env, self_); });
     }
 
     void put(const std::vector<jni::jbyte> &data) {
-        auto accessor = utils::AccessorBase<ByteBuffer>{ env_, self_ };
+        auto accessor = utils::AccessorBase<ByteBuffer>{ self_ };
         auto appender = accessor.get_method<jni::Object<ByteBuffer>(
                 jni::Array<jni::jbyte>)>("put");
-        appender(jni::Make<jni::Array<jni::jbyte>>(env_, data));
+        GlobalContext::call_with_env([&](auto &&env) {
+            appender(jni::Make<jni::Array<jni::jbyte>>(*env, data));
+        });
     }
 
     size_t capacity() {
-        return utils::AccessorBase<ByteBuffer>{ env_, self_ }
-                .get_method<jni::jint()>("capacity")();
+        return utils::AccessorBase<ByteBuffer>{ self_ }.get_method<jni::jint()>(
+                "capacity")();
     }
 
     size_t remaining() {
-        return utils::AccessorBase<ByteBuffer>{ env_, self_ }
-                .get_method<jni::jint()>("remaining")();
+        return utils::AccessorBase<ByteBuffer>{ self_ }.get_method<jni::jint()>(
+                "remaining")();
     }
 
     void rewind() {
@@ -81,18 +86,19 @@ public:
                 return "java/nio/Buffer";
             }
         };
-        utils::AccessorBase<ByteBuffer>{ env_, self_ }
+        utils::AccessorBase<ByteBuffer>{ self_ }
                 .get_method<jni::Object<Buffer>()>("rewind")();
     }
 
     size_t copy_to(void *data, size_t size) {
         if (!is_direct()) {
             avs_throw(UnsupportedOperationException(
-                    env_,
                     "Sorry. Copying from non-directly allocated buffers is not "
                     "supported"));
         }
-        const void *buffer = jni::GetDirectBufferAddress(env_, *self_);
+        const void *buffer = GlobalContext::call_with_env([&](auto &&env) {
+            return jni::GetDirectBufferAddress(*env, *self_);
+        });
         const size_t to_copy = std::min(remaining(), size);
         memcpy(data, buffer, to_copy);
         return to_copy;
@@ -124,12 +130,13 @@ public:
      * 100% sure Java does not touch the buffer contents, otherwise the behavior
      * is undefined.
      */
-    BufferView(jni::JNIEnv &env, void *native_buffer, size_t length)
-            : buffer_(env,
-                      jni::Local<jni::Object<ByteBuffer>>(
-                              env,
-                              &jni::NewDirectByteBuffer(
-                                      env, native_buffer, length))) {}
+    BufferView(void *native_buffer, size_t length)
+            : buffer_(GlobalContext::call_with_env([&](auto &&env) {
+                  return jni::Local<jni::Object<ByteBuffer>>(
+                          *env,
+                          &jni::NewDirectByteBuffer(
+                                  *env, native_buffer, length));
+              })) {}
 
     jni::Global<jni::Object<ByteBuffer>> into_java() {
         return buffer_.into_java();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,17 +33,18 @@ public:
         return "com/avsystem/anjay/AnjaySecurityInfoPsk";
     }
 
-    SecurityInfoPsk(jni::JNIEnv &env,
-                    const jni::Local<jni::Object<SecurityInfoPsk>> &instance)
+    SecurityInfoPsk(const jni::Local<jni::Object<SecurityInfoPsk>> &instance)
             : identity_(), key_() {
-        auto accessor = AccessorBase<SecurityInfoPsk>{ env, instance };
+        auto accessor = AccessorBase<SecurityInfoPsk>{ instance };
         auto identity = accessor.get_value<jni::Array<jni::jbyte>>("identity");
-        identity_.resize(identity.Length(env));
-        identity.GetRegion(env, 0, identity_);
+        GlobalContext::call_with_env([&](auto &&env) {
+            identity_.resize(identity.Length(*env));
+            identity.GetRegion(*env, 0, identity_);
 
-        auto key = accessor.get_value<jni::Array<jni::jbyte>>("key");
-        key_.resize(key.Length(env));
-        key.GetRegion(env, 0, key_);
+            auto key = accessor.get_value<jni::Array<jni::jbyte>>("key");
+            key_.resize(key.Length(*env));
+            key.GetRegion(*env, 0, key_);
+        });
     }
 
     SecurityInfoPsk(const SecurityInfoPsk &) = delete;

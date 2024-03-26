@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,18 +28,19 @@ struct NativePointer {
         return WrapperType::Name();
     }
 
-    static NativeType *into_native(jni::JNIEnv &env,
-                                   jni::Object<WrapperType> &instance) {
-        auto accessor = AccessorBase<WrapperType>{ env, instance };
+    static NativeType *into_native(jni::Object<WrapperType> &instance) {
+        auto accessor = AccessorBase<WrapperType>{ instance };
         return reinterpret_cast<NativeType *>(
                 accessor.template get_value<jni::jlong>("pointer"));
     }
 
     static jni::Local<jni::Object<WrapperType>>
-    into_object(jni::JNIEnv &env, NativeType *pointer) {
-        auto clazz = jni::Class<WrapperType>::Find(env);
-        auto ctor = clazz.template GetConstructor<jni::jlong>(env);
-        return clazz.New(env, ctor, reinterpret_cast<jni::jlong>(pointer));
+    into_object(NativeType *pointer) {
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<WrapperType>::Find(*env);
+            auto ctor = clazz.template GetConstructor<jni::jlong>(*env);
+            return clazz.New(*env, ctor, reinterpret_cast<jni::jlong>(pointer));
+        });
     }
 };
 

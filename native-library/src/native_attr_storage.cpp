@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,88 +21,88 @@
 
 #include <anjay/attr_storage.h>
 
-NativeAttrStorage::NativeAttrStorage(jni::JNIEnv &env,
+NativeAttrStorage::NativeAttrStorage(jni::JNIEnv &,
                                      const jni::Object<NativeAnjay> &anjay)
         : anjay_() {
-    auto native_anjay = NativeAnjay::into_native(env, anjay);
+    auto native_anjay = NativeAnjay::into_native(anjay);
     anjay_ = native_anjay->get_anjay();
     if (auto locked = anjay_.lock()) {
         int result = anjay_attr_storage_install(locked.get());
         if (result) {
-            avs_throw(AnjayException(env, result,
+            avs_throw(AnjayException(result,
                                      "Could not install Attribute storage"));
         }
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 void NativeAttrStorage::set_object_attrs(
-        jni::JNIEnv &env,
+        jni::JNIEnv &,
         jni::jint ssid,
         jni::jint oid,
         jni::Object<utils::ObjectInstanceAttrs> &attrs) {
-    anjay_ssid_t anjay_ssid = utils::cast_id<anjay_ssid_t>(env, ssid);
-    anjay_oid_t anjay_oid = utils::cast_id<anjay_oid_t>(env, oid);
+    anjay_ssid_t anjay_ssid = utils::cast_id<anjay_ssid_t>(ssid);
+    anjay_oid_t anjay_oid = utils::cast_id<anjay_oid_t>(oid);
     anjay_dm_oi_attributes_t anjay_attrs =
-            utils::ObjectInstanceAttrs::into_native(env, attrs);
+            utils::ObjectInstanceAttrs::into_native(attrs);
     if (auto locked = anjay_.lock()) {
         int result =
                 anjay_attr_storage_set_object_attrs(locked.get(), anjay_ssid,
                                                     anjay_oid, &anjay_attrs);
         if (result) {
-            avs_throw(AnjayException(env, result, "could not set attributes"));
+            avs_throw(AnjayException(result, "could not set attributes"));
         }
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 void NativeAttrStorage::set_instance_attrs(
-        jni::JNIEnv &env,
+        jni::JNIEnv &,
         jni::jint ssid,
         jni::jint oid,
         jni::jint iid,
         jni::Object<utils::ObjectInstanceAttrs> &attrs) {
-    anjay_ssid_t anjay_ssid = utils::cast_id<anjay_ssid_t>(env, ssid);
-    anjay_oid_t anjay_oid = utils::cast_id<anjay_oid_t>(env, oid);
-    anjay_iid_t anjay_iid = utils::cast_id<anjay_iid_t>(env, iid);
+    anjay_ssid_t anjay_ssid = utils::cast_id<anjay_ssid_t>(ssid);
+    anjay_oid_t anjay_oid = utils::cast_id<anjay_oid_t>(oid);
+    anjay_iid_t anjay_iid = utils::cast_id<anjay_iid_t>(iid);
     anjay_dm_oi_attributes_t anjay_attrs =
-            utils::ObjectInstanceAttrs::into_native(env, attrs);
+            utils::ObjectInstanceAttrs::into_native(attrs);
     if (auto locked = anjay_.lock()) {
         int result = anjay_attr_storage_set_instance_attrs(
                 locked.get(), anjay_ssid, anjay_oid, anjay_iid, &anjay_attrs);
         if (result) {
-            avs_throw(AnjayException(env, result, "could not set attributes"));
+            avs_throw(AnjayException(result, "could not set attributes"));
         }
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 void NativeAttrStorage::set_resource_attrs(
-        jni::JNIEnv &env,
+        jni::JNIEnv &,
         jni::jint ssid,
         jni::jint oid,
         jni::jint iid,
         jni::jint rid,
         jni::Object<utils::ResourceAttrs> &attrs) {
-    anjay_ssid_t anjay_ssid = utils::cast_id<anjay_ssid_t>(env, ssid);
-    anjay_oid_t anjay_oid = utils::cast_id<anjay_oid_t>(env, oid);
-    anjay_iid_t anjay_iid = utils::cast_id<anjay_iid_t>(env, iid);
-    anjay_rid_t anjay_rid = utils::cast_id<anjay_rid_t>(env, rid);
+    anjay_ssid_t anjay_ssid = utils::cast_id<anjay_ssid_t>(ssid);
+    anjay_oid_t anjay_oid = utils::cast_id<anjay_oid_t>(oid);
+    anjay_iid_t anjay_iid = utils::cast_id<anjay_iid_t>(iid);
+    anjay_rid_t anjay_rid = utils::cast_id<anjay_rid_t>(rid);
     anjay_dm_r_attributes_t anjay_attrs =
-            utils::ResourceAttrs::into_native(env, attrs);
+            utils::ResourceAttrs::into_native(attrs);
     if (auto locked = anjay_.lock()) {
         int result =
                 anjay_attr_storage_set_resource_attrs(locked.get(), anjay_ssid,
                                                       anjay_oid, anjay_iid,
                                                       anjay_rid, &anjay_attrs);
         if (result) {
-            avs_throw(AnjayException(env, result, "could not set attributes"));
+            avs_throw(AnjayException(result, "could not set attributes"));
         }
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
@@ -118,24 +118,24 @@ NativeAttrStorage::get_attr_value_none(jni::JNIEnv &,
     return ANJAY_ATTRIB_VALUE_NONE;
 }
 
-void NativeAttrStorage::purge(jni::JNIEnv &env) {
+void NativeAttrStorage::purge(jni::JNIEnv &) {
     if (auto locked = anjay_.lock()) {
         anjay_attr_storage_purge(locked.get());
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
-jni::jboolean NativeAttrStorage::is_modified(jni::JNIEnv &env) {
+jni::jboolean NativeAttrStorage::is_modified(jni::JNIEnv &) {
     if (auto locked = anjay_.lock()) {
         return anjay_attr_storage_is_modified(locked.get());
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 jni::jint
-NativeAttrStorage::persist(jni::JNIEnv &env,
+NativeAttrStorage::persist(jni::JNIEnv &,
                            jni::Object<utils::OutputStream> &output_stream) {
     if (auto locked = anjay_.lock()) {
         auto stream = utils::OutputStream::get_avs_stream(&output_stream);
@@ -147,12 +147,12 @@ NativeAttrStorage::persist(jni::JNIEnv &env,
         }
         return 0;
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 jni::jint
-NativeAttrStorage::restore(jni::JNIEnv &env,
+NativeAttrStorage::restore(jni::JNIEnv &,
                            jni::Object<utils::InputStream> &input_stream) {
     if (auto locked = anjay_.lock()) {
         auto stream = utils::InputStream::get_avs_stream(&input_stream);
@@ -164,7 +164,7 @@ NativeAttrStorage::restore(jni::JNIEnv &env,
         }
         return 0;
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 

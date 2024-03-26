@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -136,18 +136,18 @@ const anjay_fw_update_handlers_t NativeFirmwareUpdate::HANDLERS = {
 };
 
 NativeFirmwareUpdate::NativeFirmwareUpdate(
-        jni::JNIEnv &env,
+        jni::JNIEnv &,
         const jni::Object<NativeAnjay> &anjay,
         const jni::Object<utils::FirmwareUpdateHandlers> &handlers,
         const jni::Object<utils::FirmwareUpdateInitialState> &initial_state)
-        : anjay_(), accessor_(env, handlers) {
-    auto native_anjay = NativeAnjay::into_native(env, anjay);
+        : anjay_(), accessor_(handlers) {
+    auto native_anjay = NativeAnjay::into_native(anjay);
     anjay_ = native_anjay->get_anjay();
 
     anjay_tx_params_ = native_anjay->get_udp_tx_params();
 
     auto state_accessor =
-            utils::FirmwareUpdateInitialState::Accessor{ env, initial_state };
+            utils::FirmwareUpdateInitialState::Accessor{ initial_state };
     anjay_fw_update_initial_state_t state{};
     state.result = state_accessor.get_result();
 
@@ -168,22 +168,20 @@ NativeFirmwareUpdate::NativeFirmwareUpdate(
                 anjay_fw_update_install(locked.get(), &HANDLERS, this, &state);
         if (result) {
             avs_throw(AnjayException(
-                    env, result, "Could not install firmware update object"));
+                    result, "Could not install firmware update object"));
         }
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 void NativeFirmwareUpdate::set_result(
-        jni::JNIEnv &env,
-        const jni::Object<utils::FirmwareUpdateResult> &result) {
+        jni::JNIEnv &, const jni::Object<utils::FirmwareUpdateResult> &result) {
     if (auto locked = anjay_.lock()) {
         anjay_fw_update_set_result(
-                locked.get(),
-                utils::FirmwareUpdateResult::into_native(env, result));
+                locked.get(), utils::FirmwareUpdateResult::into_native(result));
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,9 +37,8 @@ struct Configuration {
 
     class Accessor : public AccessorBase<Configuration> {
     public:
-        explicit Accessor(jni::JNIEnv &env,
-                          const jni::Object<utils::Configuration> &instance)
-                : AccessorBase(env, instance) {}
+        explicit Accessor(const jni::Object<utils::Configuration> &instance)
+                : AccessorBase(instance) {}
 
         std::optional<std::string> get_endpoint_name() {
             return get_nullable_value<std::string>("endpointName");
@@ -84,8 +83,7 @@ struct Configuration {
         std::optional<avs_coap_udp_tx_params_t> get_udp_tx_params() {
             auto value = get_optional_value<CoapUdpTxParams>("udpTxParams");
             if (value) {
-                return std::make_optional(
-                        CoapUdpTxParams::into_native(get_env(), *value));
+                return std::make_optional(CoapUdpTxParams::into_native(*value));
             }
             return {};
         }
@@ -96,7 +94,7 @@ struct Configuration {
                     "udpDtlsHsTxParams");
             if (value) {
                 return std::make_optional(
-                        DtlsHandshakeTimeouts::into_native(get_env(), *value));
+                        DtlsHandshakeTimeouts::into_native(*value));
             }
             return {};
         }
@@ -109,7 +107,7 @@ struct Configuration {
                 for (size_t i = 0; i < value->size(); i++) {
                     if ((*value)[i] < 0) {
                         avs_throw(IllegalArgumentException(
-                                env_, "ciphersuite ID must not be negative"));
+                                "ciphersuite ID must not be negative"));
                     }
                     result[i] = static_cast<uint32_t>((*value)[i]);
                 }
@@ -121,8 +119,7 @@ struct Configuration {
         std::optional<avs_net_ssl_version_t> get_dtls_version() {
             auto value = get_optional_value<DtlsVersion>("dtlsVersion");
             if (value) {
-                return std::make_optional(
-                        DtlsVersion::into_native(get_env(), *value));
+                return std::make_optional(DtlsVersion::into_native(*value));
             }
             return {};
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,8 @@
 #include "./native_output_context.hpp"
 
 NativeOutputContext::NativeOutputContext(
-        jni::JNIEnv &env,
-        jni::Object<utils::NativeOutputContextPointer> &context)
-        : ctx_(utils::NativeOutputContextPointer::into_native(env, context)) {}
+        jni::JNIEnv &, jni::Object<utils::NativeOutputContextPointer> &context)
+        : ctx_(utils::NativeOutputContextPointer::into_native(context)) {}
 
 jni::jint NativeOutputContext::ret_i32(jni::JNIEnv &, jni::jint value) {
     return anjay_ret_i32(ctx_, value);
@@ -48,16 +47,16 @@ jni::jint NativeOutputContext::ret_string(jni::JNIEnv &env,
 }
 
 jni::jint
-NativeOutputContext::ret_objlnk(jni::JNIEnv &env,
+NativeOutputContext::ret_objlnk(jni::JNIEnv &,
                                 const jni::Object<utils::Objlnk> &value) {
-    auto objlnk = utils::Objlnk::into_native(env, value);
+    auto objlnk = utils::Objlnk::into_native(value);
     return anjay_ret_objlnk(ctx_, objlnk.oid, objlnk.iid);
 }
 
 jni::Local<jni::Object<utils::NativeBytesContextPointer>>
-NativeOutputContext::ret_bytes_begin(jni::JNIEnv &env, jni::jint length) {
+NativeOutputContext::ret_bytes_begin(jni::JNIEnv &, jni::jint length) {
     return utils::NativeBytesContextPointer::into_object(
-            env, anjay_ret_bytes_begin(ctx_, length));
+            anjay_ret_bytes_begin(ctx_, length));
 }
 
 void NativeOutputContext::register_native(jni::JNIEnv &env) {

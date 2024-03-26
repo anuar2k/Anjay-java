@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@ struct DownloadResultDetails {
     }
 
     static jni::Local<jni::Object<DownloadResultDetails>>
-    into_java(jni::JNIEnv &env, avs_error_t details) {
+    into_java(avs_error_t details) {
         if (details.category != AVS_ERRNO_CATEGORY) {
-            return from_string(env, "UNKNOWN");
+            return from_string("UNKNOWN");
         }
 
         static std::unordered_map<uint16_t, std::string> MAPPING{
@@ -51,14 +51,14 @@ struct DownloadResultDetails {
 
         auto mapped_to = MAPPING.find(details.code);
         if (mapped_to == MAPPING.end()) {
-            return from_string(env, "UNKNOWN");
+            return from_string("UNKNOWN");
         }
 
-        return from_string(env, mapped_to->second);
+        return from_string(mapped_to->second);
     }
 
     static jni::Local<jni::Object<DownloadResultDetails>>
-    into_java(jni::JNIEnv &env, int details) {
+    into_java(int details) {
         static std::unordered_map<int, std::string> MAPPING{
             { 132, "NOT_FOUND" },
             { 161, "NOT_IMPLEMENTED" },
@@ -68,18 +68,20 @@ struct DownloadResultDetails {
 
         auto mapped_to = MAPPING.find(details);
         if (mapped_to == MAPPING.end()) {
-            return from_string(env, "UNKNOWN");
+            return from_string("UNKNOWN");
         }
-        return from_string(env, mapped_to->second);
+        return from_string(mapped_to->second);
     }
 
 private:
     static jni::Local<jni::Object<DownloadResultDetails>>
-    from_string(jni::JNIEnv &env, const std::string &name) {
-        auto clazz = jni::Class<DownloadResultDetails>::Find(env);
-        return clazz.Get(
-                env, clazz.GetStaticField<jni::Object<DownloadResultDetails>>(
-                             env, name.c_str()));
+    from_string(const std::string &name) {
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<DownloadResultDetails>::Find(*env);
+            return clazz.Get(*env, clazz.template GetStaticField<
+                                           jni::Object<DownloadResultDetails>>(
+                                           *env, name.c_str()));
+        });
     }
 };
 

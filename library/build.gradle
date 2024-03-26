@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,18 @@
 
 buildscript {
     repositories {
-        jcenter()
+        mavenCentral()
         google()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.0'
+        classpath 'com.android.tools.build:gradle:7.2.1'
     }
 }
 
 plugins {
     id 'net.freudasoft.gradle-cmake-plugin' version '0.0.4'
-    id 'com.palantir.git-version' version '0.12.3'
+    id 'com.palantir.git-version' version '0.15.0'
     id 'com.github.sherter.google-java-format' version '0.9'
 }
 
@@ -40,12 +40,13 @@ if (project.hasProperty('android')) {
 }
 
 googleJavaFormat {
+    toolVersion = '1.7'
     options style: 'AOSP'
 }
 
 allprojects {
     repositories {
-        jcenter()
+        mavenCentral()
         google()
     }
 }

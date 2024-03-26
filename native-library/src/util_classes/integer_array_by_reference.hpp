@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,14 +36,15 @@ struct IntegerArrayByReference {
     }
 
     template <typename Func>
-    static void for_each(jni::JNIEnv &env,
-                         const jni::Object<IntegerArrayByReference> &instance,
+    static void for_each(const jni::Object<IntegerArrayByReference> &instance,
                          Func &&func) {
-        auto accessor = AccessorBase<IntegerArrayByReference>{ env, instance };
+        auto accessor = AccessorBase<IntegerArrayByReference>{ instance };
         auto value = accessor.get_value<jni::Array<jni::Integer>>("value");
-        for (jni::jsize i = 0; i < value.Length(env); ++i) {
-            func(jni::Unbox(env, value.Get(env, i)));
-        }
+        GlobalContext::call_with_env([&](auto &&env) {
+            for (jni::jsize i = 0; i < value.Length(*env); ++i) {
+                func(jni::Unbox(*env, value.Get(*env, i)));
+            }
+        });
     }
 };
 

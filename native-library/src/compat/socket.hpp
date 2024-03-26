@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,16 +41,17 @@ struct UdpSocketTag {
 
 template <typename SocketTag>
 class Socket {
-    jni::JNIEnv &env_;
     jni::Global<jni::Object<SocketTag>> self_;
 
     auto accessor() {
-        return utils::AccessorBase<SocketTag>{ env_, self_ };
+        return utils::AccessorBase<SocketTag>{ self_ };
     }
 
 public:
-    Socket(jni::JNIEnv &env, const jni::Local<jni::Object<SocketTag>> &socket)
-            : env_(env), self_(jni::NewGlobal(env_, socket)) {}
+    Socket(const jni::Local<jni::Object<SocketTag>> &socket)
+            : self_(GlobalContext::call_with_env([&](auto &&env) {
+                  return jni::NewGlobal(*env, socket);
+              })) {}
 
     void set_reuse_address(bool on) {
         accessor().template get_method<void(jni::jboolean)>("setReuseAddress")(
@@ -80,7 +81,7 @@ public:
         if (!value) {
             return {};
         }
-        return { InetAddress{ env_, value } };
+        return { InetAddress{ value } };
     }
 
     std::optional<InetAddress> get_local_address() {
@@ -89,7 +90,7 @@ public:
         if (!value) {
             return {};
         }
-        return { InetAddress{ env_, value } };
+        return { InetAddress{ value } };
     }
 
     int get_local_port() {

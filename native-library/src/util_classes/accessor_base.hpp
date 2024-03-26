@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ struct ArrayTypeExtractor<T[]> {
 template <typename Peer>
 class AccessorBase {
 protected:
-    jni::JNIEnv &env_;
     jni::Global<jni::Object<Peer>> instance_;
     jni::Global<jni::Class<Peer>> class_;
 
@@ -55,32 +54,40 @@ protected:
 
     template <typename JType>
     auto get_impl(const char *field_name) {
-        return instance_.Get(env_,
-                             class_.template GetField<JType>(env_, field_name));
+        return GlobalContext::call_with_env([&](auto &&env) {
+            return instance_.Get(
+                    *env, class_.template GetField<JType>(*env, field_name));
+        });
     }
 
     template <typename JType, typename T>
     void set_impl(const char *field_name, const T &value) {
-        instance_.Set(env_, class_.template GetField<JType>(env_, field_name),
-                      value);
+        GlobalContext::call_with_env([&](auto &&env) {
+            instance_.Set(*env,
+                          class_.template GetField<JType>(*env, field_name),
+                          value);
+        });
     }
 
     // Workaround for https://github.com/mapbox/jni.hpp/issues/60
     template <typename R, typename... Args>
     auto get_method_impl(jni::Method<Peer, R(Args...)> &&method) {
         return [&, method = std::move(method)](const Args &... args) {
-            return instance_.Call(env_, method, args...);
+            return GlobalContext::call_with_env([&](auto &&env) {
+                return instance_.Call(*env, method, args...);
+            });
         };
     }
 
     template <typename R, typename... Args>
     static auto
-    get_static_method_impl(jni::JNIEnv &env,
-                           jni::Local<jni::Class<Peer>> &&clazz,
+    get_static_method_impl(jni::Local<jni::Class<Peer>> &&clazz,
                            jni::StaticMethod<Peer, R(Args...)> &&method) {
-        return [&, clazz = std::move(clazz),
-                method = std::move(method)](const Args &... args) {
-            return clazz.Call(env, method, args...);
+        return [&, clazz = std::move(clazz), method = std::move(method)](
+                       const Args &... args) {
+            return GlobalContext::call_with_env([&](auto &&env) {
+                return clazz.Call(*env, method, args...);
+            });
         };
     }
 
@@ -89,26 +96,29 @@ public:
     // environment to global-references because local references are only
     // valid in the frame of execution of a native JNI method, and sometimes
     // we need to extend accessor's lifetime.
-    explicit AccessorBase(jni::JNIEnv &env, const jni::Object<Peer> &instance)
-            : env_(env),
-              instance_(jni::NewGlobal(env, instance)),
-              class_(jni::NewGlobal(env, jni::Class<Peer>::Find(env))) {}
-
-    jni::JNIEnv &get_env() {
-        return env_;
-    }
+    explicit AccessorBase(const jni::Object<Peer> &instance)
+            : instance_(GlobalContext::call_with_env([&](auto &&env) {
+                  return jni::NewGlobal(*env, instance);
+              })),
+              class_(GlobalContext::call_with_env([&](auto &&env) {
+                  return jni::NewGlobal(*env, jni::Class<Peer>::Find(*env));
+              })) {}
 
     template <typename Signature>
     auto get_method(const char *name) {
-        return get_method_impl(
-                class_.template GetMethod<Signature>(env_, name));
+        return GlobalContext::call_with_env([&](auto &&env) {
+            return get_method_impl(
+                    class_.template GetMethod<Signature>(*env, name));
+        });
     }
 
     template <typename Signature>
-    static auto get_static_method(jni::JNIEnv &env, const char *name) {
-        auto clazz = jni::Class<Peer>::Find(env);
-        auto method = clazz.template GetStaticMethod<Signature>(env, name);
-        return get_static_method_impl(env, std::move(clazz), std::move(method));
+    static auto get_static_method(const char *name) {
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<Peer>::Find(*env);
+            auto method = clazz.template GetStaticMethod<Signature>(*env, name);
+            return get_static_method_impl(std::move(clazz), std::move(method));
+        });
     }
 
     template <typename T>
@@ -118,8 +128,11 @@ public:
             if (!str.get()) {
                 return std::optional<std::string>{};
             }
-            return std::optional<std::string>{ jni::Make<std::string>(env_,
-                                                                      str) };
+            return GlobalContext::call_with_env([&](auto &&env) {
+                return std::optional<std::string>{
+                    jni::Make<std::string>(*env, str)
+                };
+            });
         } else if constexpr (std::is_array<T>::value
                              && std::is_arithmetic<
                                         typename detail::ArrayTypeExtractor<
@@ -128,7 +141,8 @@ public:
             using RetT = typename std::vector<Item>;
 
             auto arr = get_impl<jni::Array<Item>>(field_name);
-            auto vec = jni::Make<RetT>(env_, arr);
+            auto vec = GlobalContext::call_with_env(
+                    [&](auto &&env) { return jni::Make<RetT>(*env, arr); });
 
             return std::optional<RetT>{ vec };
         } else {
@@ -143,16 +157,15 @@ public:
         if (!value) {
             return {};
         }
-        auto unboxed = jni::Unbox(get_env(), *value);
+        auto unboxed = GlobalContext::call_with_env(
+                [&](auto &&env) { return jni::Unbox(*env, *value); });
         T casted = static_cast<T>(unboxed);
         if (static_cast<int64_t>(casted) != static_cast<int64_t>(unboxed)) {
             avs_throw(IllegalArgumentException(
-                    env_,
                     std::string{ field_name }
-                            + " field has value that is out of range "
-                            + std::to_string(std::numeric_limits<T>::min())
-                            + " - "
-                            + std::to_string(std::numeric_limits<T>::max())));
+                    + " field has value that is out of range "
+                    + std::to_string(std::numeric_limits<T>::min()) + " - "
+                    + std::to_string(std::numeric_limits<T>::max())));
         }
         return std::make_optional(casted);
     }
@@ -162,24 +175,33 @@ public:
         if constexpr (std::is_arithmetic<T>::value) {
             auto optional_value =
                     get_impl<jni::Object<OptionalTag>>(field_name);
-            auto accessor = AccessorBase<OptionalTag>{ env_, optional_value };
+            return GlobalContext::call_with_env(
+                    [&](auto &&env) -> std::optional<std::vector<T>> {
+                        auto accessor =
+                                AccessorBase<OptionalTag>{ optional_value };
 
-            if (!accessor.template get_method<jni::jboolean()>("isPresent")()) {
-                return {};
-            }
+                        if (!accessor.template get_method<jni::jboolean()>(
+                                    "isPresent")()) {
+                            return {};
+                        }
 
-            auto object =
-                    accessor.template get_method<jni::Object<>()>("get")();
+                        auto object =
+                                accessor.template get_method<jni::Object<>()>(
+                                        "get")();
 
-            jni::Local<jni::Array<T>> casted{
-                env_, jni::Cast(env_, jni::Class<jni::ArrayTag<T>>::Find(env_),
-                                object)
-                              .release()
-            };
+                        jni::Local<jni::Array<T>> casted{
+                            *env,
+                            jni::Cast(*env,
+                                      jni::Class<jni::ArrayTag<T>>::Find(*env),
+                                      object)
+                                    .release()
+                        };
 
-            std::vector<T> result = jni::Make<std::vector<T>>(env_, casted);
+                        std::vector<T> result =
+                                jni::Make<std::vector<T>>(*env, casted);
 
-            return { result };
+                        return { result };
+                    });
         } else {
             static_assert(detail::dependent_false<T>::value, "Not implemented");
         }
@@ -191,30 +213,26 @@ public:
             auto value = get_impl<jni::jlong>(field_name);
             if (value < 0) {
                 avs_throw(IllegalArgumentException(
-                        env_,
                         "size_t field " + std::string{ field_name }
-                                + " has value that is negative"));
+                        + " has value that is negative"));
             } else if (static_cast<uint64_t>(value)
                        > std::numeric_limits<size_t>::max()) {
                 avs_throw(IllegalArgumentException(
-                        env_,
                         "size_t field " + std::string{ field_name }
-                                + " has value that is too large"));
+                        + " has value that is too large"));
             }
             return static_cast<size_t>(value);
         } else if constexpr (std::is_same<T, uint16_t>::value) {
             auto value = get_impl<jni::jint>(field_name);
             if (value < 0) {
                 avs_throw(IllegalArgumentException(
-                        env_,
                         "uint16_t field " + std::string{ field_name }
-                                + " has value that is negative"));
+                        + " has value that is negative"));
             } else if (static_cast<uint32_t>(value)
                        > std::numeric_limits<uint16_t>::max()) {
                 avs_throw(IllegalArgumentException(
-                        env_,
                         "uint16_t field " + std::string{ field_name }
-                                + " has value that is too large"));
+                        + " has value that is too large"));
             }
             return static_cast<uint16_t>(value);
         } else if constexpr (std::is_same<T, bool>::value) {
@@ -225,14 +243,12 @@ public:
             auto value = get_impl<jni::jchar>(field_name);
             if (value > std::numeric_limits<char>::max()) {
                 avs_throw(IllegalArgumentException(
-                        env_,
                         "char field " + std::string{ field_name }
-                                + " has value that is too large"));
+                        + " has value that is too large"));
             } else if (value < std::numeric_limits<char>::min()) {
                 avs_throw(IllegalArgumentException(
-                        env_,
                         "char field " + std::string{ field_name }
-                                + " has value that is negative"));
+                        + " has value that is negative"));
             }
             return static_cast<char>(value);
         } else {
@@ -244,13 +260,15 @@ public:
     template <typename T>
     auto get_optional_value(const char *field_name) {
         auto optional_value = get_impl<jni::Object<OptionalTag>>(field_name);
-        auto accessor = AccessorBase<OptionalTag>{ env_, optional_value };
+        auto accessor = AccessorBase<OptionalTag>{ optional_value };
 
         if (!accessor.template get_method<jni::jboolean()>("isPresent")()) {
             return std::optional<jni::Local<jni::Object<T>>>{};
         }
         auto value = accessor.template get_method<jni::Object<>()>("get")();
-        auto casted = jni::Cast(env_, jni::Class<T>::Find(env_), value);
+        auto casted = GlobalContext::call_with_env([&](auto &&env) {
+            return jni::Cast(*env, jni::Class<T>::Find(*env), value);
+        });
         return std::make_optional(std::move(casted));
     }
 
@@ -264,23 +282,26 @@ public:
             }
         };
         auto field_value = get_value<jni::Object<JavaT>>(field_name);
-        if (!jni::IsInstanceOf(env_, field_value.get(),
-                               *jni::Class<Enum>::Find(env_))) {
-            avs_throw(ClassCastException(env_,
-                                         "Field " + std::string{ field_name }
-                                                 + " is not a Java Enum"));
-        }
-        auto accessor = AccessorBase<JavaT>{ env_, field_value };
+        return GlobalContext::call_with_env([&](auto &&env) {
+            if (!jni::IsInstanceOf(*env, field_value.get(),
+                                   *jni::Class<Enum>::Find(*env))) {
+                avs_throw(ClassCastException("Field "
+                                             + std::string{ field_name }
+                                             + " is not a Java Enum"));
+            }
+            auto accessor = AccessorBase<JavaT>{ field_value };
 
-        auto value = jni::Make<std::string>(
-                env_, accessor.template get_method<jni::String()>("name")());
+            auto value = jni::Make<std::string>(
+                    *env,
+                    accessor.template get_method<jni::String()>("name")());
 
-        auto mapped_to = mapping.find(value);
-        if (mapped_to == mapping.end()) {
-            avs_throw(IllegalArgumentException(env_, "Unsupported enum value: "
-                                                             + value));
-        }
-        return mapped_to->second;
+            auto mapped_to = mapping.find(value);
+            if (mapped_to == mapping.end()) {
+                avs_throw(IllegalArgumentException("Unsupported enum value: "
+                                                   + value));
+            }
+            return mapped_to->second;
+        });
     }
 
     template <typename T>
@@ -297,10 +318,12 @@ public:
         } else if constexpr (std::is_same<T, double>::value) {
             set_impl<jni::jdouble>(field_name, value);
         } else if constexpr (std::is_same<T, std::string>::value) {
-            set_impl<jni::String>(field_name,
-                                  jni::Make<jni::String>(env_, value));
+            GlobalContext::call_with_env([&](auto &&env) {
+                set_impl<jni::String>(field_name,
+                                      jni::Make<jni::String>(*env, value));
+            });
         } else {
-            set_impl<jni::Object<T>>(field_name, value.into_object(env_));
+            set_impl<jni::Object<T>>(field_name, value.into_object());
         }
     }
 };

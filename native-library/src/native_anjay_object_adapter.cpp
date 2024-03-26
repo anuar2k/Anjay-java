@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,11 @@
 
 NativeAnjayObjectAdapter::NativeAnjayObjectAdapter(
         const std::weak_ptr<anjay_t> &anjay,
-        jni::JNIEnv &env,
         const jni::Object<utils::NativeAnjayObject> &object)
         : def_(),
           def_ptr_(&def_),
           anjay_(anjay),
-          accessor_(env, std::move(object)),
+          accessor_(std::move(object)),
           version_() {
     def_.oid = accessor_.get_oid();
     version_ = accessor_.get_version();
@@ -75,8 +74,7 @@ int NativeAnjayObjectAdapter::install() {
     if (auto anjay = anjay_.lock()) {
         return anjay_register_object(anjay.get(), &def_ptr_);
     } else {
-        avs_throw(IllegalStateException(accessor_.get_env(),
-                                        "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 

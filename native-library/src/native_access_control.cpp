@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,59 +21,58 @@
 
 #include <anjay/access_control.h>
 
-NativeAccessControl::NativeAccessControl(jni::JNIEnv &env,
+NativeAccessControl::NativeAccessControl(jni::JNIEnv &,
                                          const jni::Object<NativeAnjay> &anjay)
         : anjay_() {
-    auto native_anjay = NativeAnjay::into_native(env, anjay);
+    auto native_anjay = NativeAnjay::into_native(anjay);
     auto raw_anjay = native_anjay->get_anjay();
     anjay_ = raw_anjay;
     int result = anjay_access_control_install(raw_anjay.get());
     if (result) {
-        avs_throw(AnjayException(env, result,
-                                 "Could not install Access Control"));
+        avs_throw(AnjayException(result, "Could not install Access Control"));
     }
 }
 
-void NativeAccessControl::set_acl(jni::JNIEnv &env,
+void NativeAccessControl::set_acl(jni::JNIEnv &,
                                   jni::jint oid,
                                   jint iid,
                                   jni::jint ssid,
                                   jni::jint access_mask) {
-    anjay_oid_t anjay_oid = utils::cast_id<anjay_oid_t>(env, oid);
-    anjay_iid_t anjay_iid = utils::cast_id<anjay_iid_t>(env, iid);
-    anjay_ssid_t anjay_ssid = utils::cast_id<anjay_ssid_t>(env, ssid);
+    anjay_oid_t anjay_oid = utils::cast_id<anjay_oid_t>(oid);
+    anjay_iid_t anjay_iid = utils::cast_id<anjay_iid_t>(iid);
+    anjay_ssid_t anjay_ssid = utils::cast_id<anjay_ssid_t>(ssid);
     anjay_access_mask_t anjay_access_mask =
-            utils::cast_id<anjay_access_mask_t>(env, access_mask);
+            utils::cast_id<anjay_access_mask_t>(access_mask);
     if (auto locked = anjay_.lock()) {
         int result =
                 anjay_access_control_set_acl(locked.get(), anjay_oid, anjay_iid,
                                              anjay_ssid, anjay_access_mask);
         if (result) {
-            avs_throw(AnjayException(env, result, "could not set acl"));
+            avs_throw(AnjayException(result, "could not set acl"));
         }
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
-void NativeAccessControl::purge(jni::JNIEnv &env) {
+void NativeAccessControl::purge(jni::JNIEnv &) {
     if (auto locked = anjay_.lock()) {
         anjay_access_control_purge(locked.get());
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
-jni::jboolean NativeAccessControl::is_modified(jni::JNIEnv &env) {
+jni::jboolean NativeAccessControl::is_modified(jni::JNIEnv &) {
     if (auto locked = anjay_.lock()) {
         return anjay_access_control_is_modified(locked.get());
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 jni::jint
-NativeAccessControl::persist(jni::JNIEnv &env,
+NativeAccessControl::persist(jni::JNIEnv &,
                              jni::Object<utils::OutputStream> &output_stream) {
     if (auto locked = anjay_.lock()) {
         auto stream = utils::OutputStream::get_avs_stream(&output_stream);
@@ -85,12 +84,12 @@ NativeAccessControl::persist(jni::JNIEnv &env,
         }
         return 0;
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 
 jni::jint
-NativeAccessControl::restore(jni::JNIEnv &env,
+NativeAccessControl::restore(jni::JNIEnv &,
                              jni::Object<utils::InputStream> &input_stream) {
     if (auto locked = anjay_.lock()) {
         auto stream = utils::InputStream::get_avs_stream(&input_stream);
@@ -102,7 +101,7 @@ NativeAccessControl::restore(jni::JNIEnv &env,
         }
         return 0;
     } else {
-        avs_throw(IllegalStateException(env, "anjay object expired"));
+        avs_throw(IllegalStateException("anjay object expired"));
     }
 }
 

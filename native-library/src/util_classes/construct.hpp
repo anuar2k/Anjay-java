@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,13 @@
 namespace utils {
 
 template <typename T, typename... Args>
-auto construct(jni::JNIEnv &env, const Args &... args) {
-    auto clazz = jni::Class<T>::Find(env);
-    auto ctor = clazz.template GetConstructor<
-            typename jni::RemoveUnique<Args>::Type...>(env);
-    return clazz.New(env, ctor, args...);
+auto construct(const Args &... args) {
+    return GlobalContext::call_with_env([&](auto &&env) {
+        auto clazz = jni::Class<T>::Find(*env);
+        auto ctor = clazz.template GetConstructor<
+                typename jni::RemoveUnique<Args>::Type...>(*env);
+        return clazz.New(*env, ctor, args...);
+    });
 }
 
 } // namespace utils

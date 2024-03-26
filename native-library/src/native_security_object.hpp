@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,13 +44,14 @@ class NativeSecurityObject {
                     return std::optional<std::string>{};
                 }
                 return std::make_optional(
-                        jni::Make<std::string>(get_env(), *value));
+                        GlobalContext::call_with_env([&](auto &&env) {
+                            return jni::Make<std::string>(*env, *value);
+                        }));
             }
 
         public:
-            explicit Accessor(jni::JNIEnv &env,
-                              const jni::Object<Instance> &instance)
-                    : AccessorBase(env, instance) {}
+            explicit Accessor(const jni::Object<Instance> &instance)
+                    : AccessorBase(instance) {}
 
             anjay_ssid_t get_ssid() {
                 return get_value<uint16_t>("ssid");

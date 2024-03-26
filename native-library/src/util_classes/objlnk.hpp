@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,22 +33,24 @@ struct Objlnk {
         return "com/avsystem/anjay/Anjay$Objlnk";
     }
 
-    jni::Local<jni::Object<Objlnk>> into_object(jni::JNIEnv &env) const {
-        auto clazz = jni::Class<Objlnk>::Find(env);
-        auto ctor = clazz.GetConstructor<jni::jint, jni::jint>(env);
-        return clazz.New(env, ctor, oid, iid);
+    jni::Local<jni::Object<Objlnk>> into_object() const {
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<Objlnk>::Find(*env);
+            auto ctor =
+                    clazz.template GetConstructor<jni::jint, jni::jint>(*env);
+            return clazz.New(*env, ctor, oid, iid);
+        });
     }
 
-    static Objlnk into_native(jni::JNIEnv &env,
-                              const jni::Object<Objlnk> &instance) {
-        auto accessor = AccessorBase<Objlnk>{ env, instance };
+    static Objlnk into_native(const jni::Object<Objlnk> &instance) {
+        auto accessor = AccessorBase<Objlnk>{ instance };
         auto oid = accessor.get_value<int>("oid");
         if (oid < 0 || oid > std::numeric_limits<anjay_oid_t>::max()) {
-            avs_throw(IllegalArgumentException(env, "oid out of range"));
+            avs_throw(IllegalArgumentException("oid out of range"));
         }
         auto iid = accessor.get_value<int>("iid");
         if (iid < 0 || iid > std::numeric_limits<anjay_oid_t>::max()) {
-            avs_throw(IllegalArgumentException(env, "iid out of range"));
+            avs_throw(IllegalArgumentException("iid out of range"));
         }
         return Objlnk{ static_cast<anjay_oid_t>(oid),
                        static_cast<anjay_iid_t>(iid) };

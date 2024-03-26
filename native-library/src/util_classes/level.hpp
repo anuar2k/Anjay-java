@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,20 +31,22 @@ struct Level {
         return "java/util/logging/Level";
     }
 
-    static jni::Local<jni::Object<Level>> from_native(jni::JNIEnv &env,
-                                                      avs_log_level_t level) {
-        auto clazz = jni::Class<Level>::Find(env);
-        auto get_enum_instance = [&](const std::string &name) {
-            return clazz.Get(env,
-                             clazz.GetStaticField<jni::Object<Level>>(
-                                     env, name.c_str()));
-        };
+    static jni::Local<jni::Object<Level>> from_native(avs_log_level_t level) {
         static std::unordered_map<avs_log_level_t, std::string> MAPPING{
             { AVS_LOG_TRACE, "FINEST" }, { AVS_LOG_DEBUG, "FINE" },
             { AVS_LOG_INFO, "INFO" },    { AVS_LOG_WARNING, "WARNING" },
             { AVS_LOG_ERROR, "SEVERE" }, { AVS_LOG_QUIET, "OFF" }
         };
-        return get_enum_instance(MAPPING[level]);
+        return GlobalContext::call_with_env([&](auto &&env) {
+            auto clazz = jni::Class<Level>::Find(*env);
+            auto get_enum_instance = [&](const std::string &name) {
+                return clazz.Get(
+                        *env,
+                        clazz.template GetStaticField<jni::Object<Level>>(
+                                *env, name.c_str()));
+            };
+            return get_enum_instance(MAPPING[level]);
+        });
     }
 };
 

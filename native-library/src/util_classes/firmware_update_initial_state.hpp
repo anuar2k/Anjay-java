@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,9 +36,8 @@ struct FirmwareUpdateInitialState {
     class Accessor : public AccessorBase<FirmwareUpdateInitialState> {
     public:
         explicit Accessor(
-                jni::JNIEnv &env,
                 const jni::Object<FirmwareUpdateInitialState> &initial_state)
-                : AccessorBase(env, initial_state) {}
+                : AccessorBase(initial_state) {}
 
         std::optional<std::string> get_persisted_uri() {
             return get_nullable_value<std::string>("persistedUri");
@@ -51,7 +50,7 @@ struct FirmwareUpdateInitialState {
         std::optional<Etag> get_resume_etag() {
             auto value = get_optional_array<jni::jbyte>("resumeEtag");
             if (value) {
-                return std::make_optional<Etag>(env_, *value);
+                return std::make_optional<Etag>(*value);
             } else {
                 return {};
             }
@@ -61,7 +60,7 @@ struct FirmwareUpdateInitialState {
             auto value = get_value<jni::Object<FirmwareUpdateInitialResult>>(
                     "result");
             if (value) {
-                return FirmwareUpdateInitialResult::into_native(env_, value);
+                return FirmwareUpdateInitialResult::into_native(value);
             } else {
                 return ANJAY_FW_UPDATE_INITIAL_NEUTRAL;
             }

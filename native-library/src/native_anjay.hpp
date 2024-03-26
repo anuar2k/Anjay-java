@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 AVSystem <avsystem@avsystem.com>
+ * Copyright 2020-2024 AVSystem <avsystem@avsystem.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,9 +46,8 @@ public:
     }
 
     static NativeAnjay *
-    into_native(jni::JNIEnv &env,
-                const jni::Object<NativeAnjay> &native_anjay) {
-        auto accessor = utils::AccessorBase<NativeAnjay>{ env, native_anjay };
+    into_native(const jni::Object<NativeAnjay> &native_anjay) {
+        auto accessor = utils::AccessorBase<NativeAnjay>{ native_anjay };
         return reinterpret_cast<NativeAnjay *>(
                 accessor.get_value<jni::jlong>("self"));
     }
